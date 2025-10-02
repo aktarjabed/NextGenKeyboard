@@ -1,6 +1,8 @@
 package com.nextgen.keyboard.feature.autocorrect
 
 import android.content.Context
+import android.content.Context
+import com.nextgen.keyboard.R
 import com.nextgen.keyboard.data.model.Language
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -102,56 +104,23 @@ class AdvancedAutocorrectEngine @Inject constructor(
      */
     private fun loadDictionaries() {
         // Load English dictionary
-        dictionaries["en"] = loadEnglishDictionary()
+        dictionaries["en"] = loadDictionaryFromRes(R.raw.en_dict)
 
         // Load other language dictionaries as needed
         Timber.d("✅ Loaded ${dictionaries.size} language dictionaries")
     }
 
-    private fun loadEnglishDictionary(): Set<String> {
-        // Extended English dictionary with 10,000+ common words
-        return setOf(
-            // Common words
-            "the", "be", "to", "of", "and", "a", "in", "that", "have", "I",
-            "it", "for", "not", "on", "with", "he", "as", "you", "do", "at",
-            "this", "but", "his", "by", "from", "they", "we", "say", "her", "she",
-            "or", "an", "will", "my", "one", "all", "would", "there", "their", "what",
-
-            // Action verbs
-            "go", "going", "went", "gone", "make", "making", "made", "get", "getting", "got",
-            "see", "seeing", "saw", "seen", "know", "knowing", "knew", "known",
-            "take", "taking", "took", "taken", "come", "coming", "came",
-            "think", "thinking", "thought", "look", "looking", "looked",
-            "want", "wanting", "wanted", "give", "giving", "gave", "given",
-            "use", "using", "used", "find", "finding", "found",
-            "tell", "telling", "told", "ask", "asking", "asked",
-            "work", "working", "worked", "seem", "seeming", "seemed",
-            "feel", "feeling", "felt", "try", "trying", "tried",
-            "leave", "leaving", "left", "call", "calling", "called",
-
-            // Common nouns
-            "time", "person", "year", "way", "day", "thing", "man", "world", "life", "hand",
-            "part", "child", "eye", "woman", "place", "work", "week", "case", "point", "government",
-            "company", "number", "group", "problem", "fact", "business", "service", "people",
-            "information", "system", "area", "question", "money", "water", "food", "family",
-
-            // Adjectives
-            "good", "better", "best", "new", "first", "last", "long", "great", "little", "own",
-            "other", "old", "right", "big", "high", "different", "small", "large", "next", "early",
-            "young", "important", "few", "public", "bad", "same", "able", "happy", "sad", "angry",
-
-            // Technology
-            "computer", "phone", "internet", "email", "website", "app", "software", "data", "file",
-            "system", "network", "server", "database", "cloud", "digital", "online", "device",
-            "technology", "program", "code", "application", "platform", "interface", "user",
-
-            // Modern words
-            "social", "media", "video", "image", "photo", "post", "share", "like", "comment",
-            "follow", "friend", "message", "chat", "call", "send", "receive", "download", "upload",
-
-            // Add more as needed...
-        ).plus(learnedWords)
+    private fun loadDictionaryFromRes(resId: Int): Set<String> {
+        return try {
+            context.resources.openRawResource(resId).bufferedReader().useLines { lines ->
+                lines.toSet()
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error loading dictionary from resource")
+            emptySet()
+        }
     }
+
 
     /**
      * Get advanced suggestions with context awareness
@@ -166,7 +135,7 @@ class AdvancedAutocorrectEngine @Inject constructor(
         try {
             val lowerWord = word.lowercase(Locale.getDefault())
             val languageCode = language.code.substring(0, 2)
-            val dictionary = dictionaries[languageCode] ?: dictionaries["en"]!!
+            val dictionary = (dictionaries[languageCode] ?: dictionaries["en"]!!).plus(learnedWords)
 
             // 1. Check if word exists in dictionary
             if (!dictionary.contains(lowerWord) && lowerWord.length >= 3) {
