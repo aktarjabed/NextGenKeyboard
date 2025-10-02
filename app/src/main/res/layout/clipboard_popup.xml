@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/popup_background"
+    android:padding="8dp">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/clipboard_history"
+            android:textSize="18sp"
+            android:textColor="@color/key_text"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/close_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@android:string/cancel"
+            android:textSize="14sp"
+            style="@style/Widget.Material3.Button.TextButton" />
+    </LinearLayout>
+
+    <!-- Search Bar -->
+    <EditText
+        android:id="@+id/search_edit"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginHorizontal="8dp"
+        android:layout_marginBottom="8dp"
+        android:hint="@string/search_clipboard"
+        android:background="@drawable/search_background"
+        android:padding="12dp"
+        android:textSize="14sp"
+        android:textColor="@color/key_text"
+        android:textColorHint="@color/key_text"
+        android:maxLines="1"
+        android:inputType="text"
+        android:imeOptions="actionSearch" />
+
+    <!-- Clipboard List -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/clipboard_recycler"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:clipToPadding="false"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="4dp"
+        android:scrollbars="vertical" />
+
+    <!-- Empty State -->
+    <TextView
+        android:id="@+id/empty_state"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:gravity="center"
+        android:text="@string/no_clipboard_items"
+        android:textSize="14sp"
+        android:textColor="@color/key_text"
+        android:visibility="gone" />
+</LinearLayout>
