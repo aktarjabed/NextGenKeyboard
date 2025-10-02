@@ -26,6 +26,7 @@ class SwipePredictorTest {
 
         // Assert
         assertThat(candidates).isNotEmpty()
+        // Based on the hardcoded frequencies in SwipePredictor
         assertThat(candidates).containsExactly("the", "this", "that", "think").inOrder()
     }
 

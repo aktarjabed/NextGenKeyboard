@@ -9,6 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
+import com.nextgen.keyboard.BuildConfig
 import com.nextgen.keyboard.data.repository.PreferencesRepository
 import com.nextgen.keyboard.feature.autocorrect.AdvancedAutocorrectEngine
 import com.nextgen.keyboard.feature.voice.VoiceInputManager
@@ -52,7 +53,6 @@ class NextGenKeyboardService : InputMethodService() {
             initializeComponents()
         } catch (e: Exception) {
             logError("Failed to initialize keyboard components", e)
-            // Fallback to a basic keyboard if initialization fails
             useBasicKeyboard = true
         }
     }
@@ -60,15 +60,16 @@ class NextGenKeyboardService : InputMethodService() {
     private fun initializeComponents() {
         try {
             viewModel = KeyboardViewModel(autocorrectEngine, preferencesRepository, giphyManager)
-            // TODO: Get Giphy API key from a secure place
-            giphyManager.initialize("YOUR_GIPHY_API_KEY")
+            if (BuildConfig.GIPHY_API_KEY != "YOUR_KEY_HERE") {
+                giphyManager.initialize(BuildConfig.GIPHY_API_KEY)
+            }
             logInfo("Keyboard components initialized successfully.")
         } catch (oom: OutOfMemoryError) {
             logError("Out of memory during initialization", oom)
-            throw oom // Re-throw to allow system to handle it
+            throw oom
         } catch (e: Exception) {
             logError("Unexpected error during initialization", e)
-            throw e // Re-throw to be caught by the outer handler
+            throw e
         }
     }
 
@@ -84,7 +85,6 @@ class NextGenKeyboardService : InputMethodService() {
 
     override fun onStartInputView(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        // Reset to main state whenever the keyboard is shown
         _keyboardState.value = KeyboardState.Main
     }
 
@@ -101,7 +101,6 @@ class NextGenKeyboardService : InputMethodService() {
                         val voiceState by voiceInputManager.voiceState.collectAsState()
                         val voiceVolume by voiceInputManager.volume.collectAsState()
 
-                        // Handle voice input results
                         LaunchedEffect(voiceState) {
                             if (voiceState is VoiceInputState.Result) {
                                 commitText((voiceState as VoiceInputState.Result).text)
@@ -115,12 +114,8 @@ class NextGenKeyboardService : InputMethodService() {
                                 MainKeyboardView(
                                     language = language,
                                     suggestions = suggestions.map { it.suggestion },
-                                    onSuggestionClick = { suggestion ->
-                                        handleKeyPress(suggestion)
-                                    },
-                                    onKeyClick = { key ->
-                                        handleKeyPress(key)
-                                    },
+                                    onSuggestionClick = { suggestion -> handleKeyPress(suggestion) },
+                                    onKeyClick = { key -> handleKeyPress(key) },
                                     onVoiceInputClick = { _keyboardState.value = KeyboardState.Voice },
                                     onGifKeyboardClick = { _keyboardState.value = KeyboardState.Gif },
                                     onSettingsClick = {
@@ -144,12 +139,7 @@ class NextGenKeyboardService : InputMethodService() {
                                 GifKeyboard(
                                     viewModel = viewModel,
                                     onGifSelected = { media ->
-                                        val url = media.images.original?.gifUrl
-                                        if (!url.isNullOrBlank()) {
-                                            commitText(url)
-                                        } else {
-                                            logWarning("Selected GIF has no URL.")
-                                        }
+                                        commitText(media.images.original?.gifUrl ?: "")
                                         _keyboardState.value = KeyboardState.Main
                                     },
                                     onClose = { _keyboardState.value = KeyboardState.Main }
@@ -170,7 +160,7 @@ class NextGenKeyboardService : InputMethodService() {
 
     private fun handleKeyPress(text: String) {
         try {
-            if (text.isEmpty()) {
+            if (text.isBlank()) {
                 logWarning("Attempted to commit empty text.")
                 return
             }

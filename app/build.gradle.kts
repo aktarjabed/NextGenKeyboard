@@ -23,6 +23,10 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
 
+        // Define a build config field for the Giphy API key
+        // Note: The actual key should be stored in local.properties and not checked into version control
+        buildConfigField("String", "GIPHY_API_KEY", "\"YOUR_KEY_HERE\"")
+
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
         }
@@ -112,6 +116,10 @@ dependencies {
 
     // Timber Logging
     implementation("com.jakewharton.timber:timber:5.0.1")
+
+    // ✅ SQLCipher for encrypted database
+    implementation("net.zetetic:android-database-sqlcipher:4.5.4")
+    implementation("androidx.sqlite:sqlite-ktx:2.4.0")
 
     // ✅ Android Security for secure key storage
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
