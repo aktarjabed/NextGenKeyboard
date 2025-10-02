@@ -4,6 +4,7 @@ plugins {
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
     id("kotlin-parcelize")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
@@ -127,6 +128,16 @@ dependencies {
     // ✅ Accompanist for Pager
     implementation("com.google.accompanist:accompanist-pager:0.32.0")
     implementation("com.google.accompanist:accompanist-pager-indicators:0.32.0")
+
+    // ✅ Coil for GIF/image loading
+    implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt:coil-gif:2.5.0")
+
+    // ✅ Kotlinx Serialization for backup/export
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
+
+    // ✅ Giphy SDK for GIF keyboard
+    implementation("com.giphy.sdk:ui:2.1.12")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

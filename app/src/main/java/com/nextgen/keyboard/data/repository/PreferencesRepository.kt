@@ -31,6 +31,11 @@ class PreferencesRepository @Inject constructor(
         val BLOCK_SENSITIVE_CONTENT = booleanPreferencesKey("block_sensitive_content")
         val AUTO_DELETE_DAYS = intPreferencesKey("auto_delete_days")
         val MAX_CLIPBOARD_ITEMS = intPreferencesKey("max_clipboard_items")
+
+        // ✅ NEW: Language and Theme settings
+        val CURRENT_LANGUAGE = stringPreferencesKey("current_language")
+        val ENABLED_LANGUAGES = stringPreferencesKey("enabled_languages")
+        val CURRENT_THEME = stringPreferencesKey("current_theme")
     }
 
     val isDarkMode: Flow<Boolean> = context.dataStore.data
@@ -57,6 +62,20 @@ class PreferencesRepository @Inject constructor(
 
     val maxClipboardItems: Flow<Int> = context.dataStore.data
         .map { preferences -> preferences[PreferencesKeys.MAX_CLIPBOARD_ITEMS] ?: 500 }
+
+    // ✅ NEW: Language and Theme flows
+    val currentLanguage: Flow<String> = context.dataStore.data
+        .map { preferences -> preferences[PreferencesKeys.CURRENT_LANGUAGE] ?: "en_US" }
+
+    val enabledLanguages: Flow<List<String>> = context.dataStore.data
+        .map { preferences ->
+            (preferences[PreferencesKeys.ENABLED_LANGUAGES] ?: "en_US")
+                .split(",")
+                .filter { it.isNotBlank() }
+        }
+
+    val currentTheme: Flow<String> = context.dataStore.data
+        .map { preferences -> preferences[PreferencesKeys.CURRENT_THEME] ?: "dark_blue" }
 
     suspend fun setDarkMode(enabled: Boolean) {
         context.dataStore.edit { preferences ->
@@ -104,6 +123,25 @@ class PreferencesRepository @Inject constructor(
     suspend fun setMaxClipboardItems(count: Int) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.MAX_CLIPBOARD_ITEMS] = count.coerceIn(50, 2000)
+        }
+    }
+
+    // ✅ NEW: Language and Theme setters
+    suspend fun setCurrentLanguage(languageCode: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CURRENT_LANGUAGE] = languageCode
+        }
+    }
+
+    suspend fun setEnabledLanguages(languageCodes: List<String>) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.ENABLED_LANGUAGES] = languageCodes.joinToString(",")
+        }
+    }
+
+    suspend fun setCurrentTheme(themeName: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CURRENT_THEME] = themeName
         }
     }
 }
