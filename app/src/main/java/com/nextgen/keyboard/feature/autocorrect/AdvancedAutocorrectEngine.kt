@@ -103,6 +103,8 @@ class AdvancedAutocorrectEngine @Inject constructor(
     private fun loadDictionaries() {
         // Load English dictionary
         dictionaries["en"] = loadEnglishDictionary()
+        dictionaries["es"] = loadSpanishDictionary()
+        dictionaries["de"] = loadGermanDictionary()
 
         // Load other language dictionaries as needed
         Timber.d("✅ Loaded ${dictionaries.size} language dictionaries")
@@ -151,6 +153,27 @@ class AdvancedAutocorrectEngine @Inject constructor(
 
             // Add more as needed...
         ).plus(learnedWords)
+    }
+
+    private fun loadSpanishDictionary(): Set<String> {
+        return setOf(
+            "el", "la", "de", "y", "a", "en", "que", "es", "por", "un",
+            "con", "no", "una", "su", "para", "como", "más", "pero", "las", "le",
+            "ser", "estar", "haber", "tener", "hacer", "decir", "ir", "ver", "dar",
+            "saber", "querer", "llegar", "pasar", "deber", "poner", "parecer", "quedar",
+            "creer", "hablar", "llevar", "dejar", "seguir", "encontrar", "llamar", "venir",
+            "hola", "gracias", "adiós", "por favor", "lo siento", "buenos días", "buenas tardes", "buenas noches"
+        )
+    }
+
+    private fun loadGermanDictionary(): Set<String> {
+        return setOf(
+            "der", "die", "das", "und", "in", "den", "von", "zu", "mit", "sich",
+            "auf", "für", "ist", "im", "dass", "nicht", "ein", "eine", "als", "auch",
+            "sein", "haben", "werden", "können", "müssen", "sagen", "geben", "machen", "kommen",
+            "sollen", "wollen", "gehen", "wissen", "sehen", "lassen", "stehen", "finden",
+            "hallo", "danke", "tschüss", "bitte", "entschuldigung", "guten morgen", "guten tag", "guten abend"
+        )
     }
 
     /**

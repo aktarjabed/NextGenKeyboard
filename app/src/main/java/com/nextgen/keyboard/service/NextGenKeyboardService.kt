@@ -62,8 +62,6 @@ class NextGenKeyboardService : InputMethodService() {
     override fun onCreate() {
         super.onCreate()
         viewModel = KeyboardViewModel(autocorrectEngine, preferencesRepository, giphyManager)
-        // TODO: Get Giphy API key from a secure place
-        giphyManager.initialize("YOUR_GIPHY_API_KEY")
     }
 
     override fun onDestroy() {
