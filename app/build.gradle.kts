@@ -68,6 +68,7 @@ android {
 dependencies {
     // Core Android
     implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
@@ -109,6 +110,24 @@ dependencies {
     // Timber Logging
     implementation("com.jakewharton.timber:timber:5.0.1")
 
+    // ✅ SQLCipher for encrypted database
+    implementation("net.zetetic:android-database-sqlcipher:4.5.4")
+    implementation("androidx.sqlite:sqlite-ktx:2.4.0")
+
+    // ✅ Android Security for secure key storage
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // ✅ WorkManager for background tasks
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // ✅ Hilt Worker
+    implementation("androidx.hilt:hilt-work:1.2.0")
+    ksp("androidx.hilt:hilt-compiler:1.2.0")
+
+    // ✅ Accompanist for Pager
+    implementation("com.google.accompanist:accompanist-pager:0.32.0")
+    implementation("com.google.accompanist:accompanist-pager-indicators:0.32.0")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
@@ -117,8 +136,4 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-}
-
-ksp {
-    correctErrorTypes = true
 }

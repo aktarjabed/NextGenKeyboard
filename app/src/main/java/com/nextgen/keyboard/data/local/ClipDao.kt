@@ -33,4 +33,24 @@ interface ClipDao {
 
     @Query("SELECT COUNT(*) FROM clips")
     suspend fun getClipCount(): Int
+
+    // ✅ NEW: Delete oldest unpinned clips
+    @Query("""
+        DELETE FROM clips
+        WHERE id IN (
+            SELECT id FROM clips
+            WHERE isPinned = 0
+            ORDER BY timestamp ASC
+            LIMIT :limit
+        )
+    """)
+    suspend fun deleteOldestUnpinned(limit: Int)
+
+    // ✅ NEW: Delete clips older than timestamp
+    @Query("DELETE FROM clips WHERE isPinned = 0 AND timestamp < :beforeTimestamp")
+    suspend fun deleteOlderThan(beforeTimestamp: Long)
+
+    // ✅ NEW: Get count of unpinned clips
+    @Query("SELECT COUNT(*) FROM clips WHERE isPinned = 0")
+    suspend fun getUnpinnedCount(): Int
 }
