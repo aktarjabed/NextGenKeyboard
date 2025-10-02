@@ -1,28 +1,10 @@
 package com.nextgen.keyboard.service
 
-import android.inputmethodservice.InputMethodService
-import android.view.View
-import android.view.View
-import androidx.compose.ui.platform.ComposeView
-import com.nextgen.keyboard.ui.theme.NextGenKeyboardTheme
-import android.view.View
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.ComposeView
-import androidx.lifecycle.ViewModelProvider
-import com.nextgen.keyboard.data.repository.PreferencesRepository
-import android.view.View
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.ComposeView
-import com.nextgen.keyboard.data.repository.PreferencesRepository
-import com.nextgen.keyboard.feature.autocorrect.AdvancedAutocorrectEngine
-import com.nextgen.keyboard.feature.voice.VoiceInputManager
-import com.nextgen.keyboard.ui.theme.NextGenKeyboardTheme
-import com.nextgen.keyboard.ui.view.GifKeyboard
-import com.nextgen.keyboard.ui.view.MainKeyboardView
 import android.content.Intent
+import android.inputmethodservice.InputMethodService
+import android.view.InflateException
 import android.view.View
+import android.widget.TextView
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -37,6 +19,9 @@ import com.nextgen.keyboard.ui.view.GifKeyboard
 import com.nextgen.keyboard.ui.view.MainKeyboardView
 import com.nextgen.keyboard.ui.view.VoiceInputSheet
 import com.nextgen.keyboard.ui.viewmodel.KeyboardViewModel
+import com.nextgen.keyboard.util.logError
+import com.nextgen.keyboard.util.logInfo
+import com.nextgen.keyboard.util.logWarning
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -59,16 +44,42 @@ class NextGenKeyboardService : InputMethodService() {
     private val _keyboardState = MutableStateFlow<KeyboardState>(KeyboardState.Main)
     private val keyboardState = _keyboardState.asStateFlow()
 
+    private var useBasicKeyboard = false
+
     override fun onCreate() {
         super.onCreate()
-        viewModel = KeyboardViewModel(autocorrectEngine, preferencesRepository, giphyManager)
-        // TODO: Get Giphy API key from a secure place
-        giphyManager.initialize("YOUR_GIPHY_API_KEY")
+        try {
+            initializeComponents()
+        } catch (e: Exception) {
+            logError("Failed to initialize keyboard components", e)
+            // Fallback to a basic keyboard if initialization fails
+            useBasicKeyboard = true
+        }
+    }
+
+    private fun initializeComponents() {
+        try {
+            viewModel = KeyboardViewModel(autocorrectEngine, preferencesRepository, giphyManager)
+            // TODO: Get Giphy API key from a secure place
+            giphyManager.initialize("YOUR_GIPHY_API_KEY")
+            logInfo("Keyboard components initialized successfully.")
+        } catch (oom: OutOfMemoryError) {
+            logError("Out of memory during initialization", oom)
+            throw oom // Re-throw to allow system to handle it
+        } catch (e: Exception) {
+            logError("Unexpected error during initialization", e)
+            throw e // Re-throw to be caught by the outer handler
+        }
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-        voiceInputManager.destroy()
+        try {
+            voiceInputManager.destroy()
+        } catch (e: Exception) {
+            logError("Error during onDestroy", e)
+        } finally {
+            super.onDestroy()
+        }
     }
 
     override fun onStartInputView(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
@@ -78,66 +89,94 @@ class NextGenKeyboardService : InputMethodService() {
     }
 
     override fun onCreateInputView(): View {
-        return ComposeView(this).apply {
-            setContent {
-                NextGenKeyboardTheme {
-                    val currentKeyboardState by keyboardState.collectAsState()
-                    val suggestions by viewModel.suggestions.collectAsState()
-                    val voiceState by voiceInputManager.voiceState.collectAsState()
-                    val voiceVolume by voiceInputManager.volume.collectAsState()
+        return try {
+            if (useBasicKeyboard) {
+                return createFallbackView()
+            }
+            ComposeView(this).apply {
+                setContent {
+                    NextGenKeyboardTheme {
+                        val currentKeyboardState by keyboardState.collectAsState()
+                        val suggestions by viewModel.suggestions.collectAsState()
+                        val voiceState by voiceInputManager.voiceState.collectAsState()
+                        val voiceVolume by voiceInputManager.volume.collectAsState()
 
-                    // Handle voice input results
-                    LaunchedEffect(voiceState) {
-                        if (voiceState is VoiceInputState.Result) {
-                            commitText((voiceState as VoiceInputState.Result).text)
-                            _keyboardState.value = KeyboardState.Main
+                        // Handle voice input results
+                        LaunchedEffect(voiceState) {
+                            if (voiceState is VoiceInputState.Result) {
+                                commitText((voiceState as VoiceInputState.Result).text)
+                                _keyboardState.value = KeyboardState.Main
+                            }
                         }
-                    }
 
-                    when (currentKeyboardState) {
-                        is KeyboardState.Main -> {
-                            val language by viewModel.currentLanguage.collectAsState()
-                            MainKeyboardView(
-                                language = language,
-                                suggestions = suggestions.map { it.suggestion },
-                                onSuggestionClick = { suggestion ->
-                                    commitText(suggestion)
-                                },
-                                onKeyClick = { key ->
-                                    commitText(key)
-                                },
-                                onVoiceInputClick = { _keyboardState.value = KeyboardState.Voice },
-                                onGifKeyboardClick = { _keyboardState.value = KeyboardState.Gif },
-                                onSettingsClick = {
-                                    val intent = Intent(this@NextGenKeyboardService, MainActivity::class.java).apply {
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        when (currentKeyboardState) {
+                            is KeyboardState.Main -> {
+                                val language by viewModel.currentLanguage.collectAsState()
+                                MainKeyboardView(
+                                    language = language,
+                                    suggestions = suggestions.map { it.suggestion },
+                                    onSuggestionClick = { suggestion ->
+                                        handleKeyPress(suggestion)
+                                    },
+                                    onKeyClick = { key ->
+                                        handleKeyPress(key)
+                                    },
+                                    onVoiceInputClick = { _keyboardState.value = KeyboardState.Voice },
+                                    onGifKeyboardClick = { _keyboardState.value = KeyboardState.Gif },
+                                    onSettingsClick = {
+                                        val intent = Intent(this@NextGenKeyboardService, MainActivity::class.java).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        startActivity(intent)
                                     }
-                                    startActivity(intent)
-                                }
-                            )
-                        }
-                        is KeyboardState.Voice -> {
-                            VoiceInputSheet(
-                                state = voiceState,
-                                volume = voiceVolume,
-                                onStartListening = { voiceInputManager.startListening(viewModel.currentLanguage.value.code) },
-                                onStopListening = { voiceInputManager.stopListening() },
-                                onCancel = { _keyboardState.value = KeyboardState.Main }
-                            )
-                        }
-                        is KeyboardState.Gif -> {
-                            GifKeyboard(
-                                viewModel = viewModel,
-                                onGifSelected = { media ->
-                                    commitText(media.images.original?.gifUrl ?: "")
-                                    _keyboardState.value = KeyboardState.Main
-                                },
-                                onClose = { _keyboardState.value = KeyboardState.Main }
-                            )
+                                )
+                            }
+                            is KeyboardState.Voice -> {
+                                VoiceInputSheet(
+                                    state = voiceState,
+                                    volume = voiceVolume,
+                                    onStartListening = { voiceInputManager.startListening(viewModel.currentLanguage.value.code) },
+                                    onStopListening = { voiceInputManager.stopListening() },
+                                    onCancel = { _keyboardState.value = KeyboardState.Main }
+                                )
+                            }
+                            is KeyboardState.Gif -> {
+                                GifKeyboard(
+                                    viewModel = viewModel,
+                                    onGifSelected = { media ->
+                                        val url = media.images.original?.gifUrl
+                                        if (!url.isNullOrBlank()) {
+                                            commitText(url)
+                                        } else {
+                                            logWarning("Selected GIF has no URL.")
+                                        }
+                                        _keyboardState.value = KeyboardState.Main
+                                    },
+                                    onClose = { _keyboardState.value = KeyboardState.Main }
+                                )
+                            }
                         }
                     }
                 }
             }
+        } catch (e: InflateException) {
+            logError("Failed to inflate keyboard layout", e)
+            createFallbackView()
+        } catch (e: Exception) {
+            logError("Unexpected error creating input view", e)
+            createFallbackView()
+        }
+    }
+
+    private fun handleKeyPress(text: String) {
+        try {
+            if (text.isEmpty()) {
+                logWarning("Attempted to commit empty text.")
+                return
+            }
+            commitText(text)
+        } catch (e: Exception) {
+            logError("Error handling key press for text: $text", e)
         }
     }
 
@@ -145,9 +184,22 @@ class NextGenKeyboardService : InputMethodService() {
         currentInputConnection?.commitText(text, 1)
     }
 
+    private fun createFallbackView(): View {
+        return TextView(this).apply {
+            this.text = "Keyboard failed to load. Please try again."
+            setPadding(32, 32, 32, 32)
+        }
+    }
+
     override fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
-        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
-        val composingText = currentInputConnection?.getTextBeforeCursor(100, 0)?.toString() ?: ""
-        viewModel.onTextUpdated(composingText)
+        try {
+            super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+            val composingText = currentInputConnection?.getTextBeforeCursor(100, 0)?.toString() ?: ""
+            if (!useBasicKeyboard) {
+                viewModel.onTextUpdated(composingText)
+            }
+        } catch (e: Exception) {
+            logError("Error in onUpdateSelection", e)
+        }
     }
 }

@@ -5,6 +5,8 @@ plugins {
     id("com.google.dagger.hilt.android")
     id("kotlin-parcelize")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -111,10 +113,6 @@ dependencies {
     // Timber Logging
     implementation("com.jakewharton.timber:timber:5.0.1")
 
-    // ✅ SQLCipher for encrypted database
-    implementation("net.zetetic:android-database-sqlcipher:4.5.4")
-    implementation("androidx.sqlite:sqlite-ktx:2.4.0")
-
     // ✅ Android Security for secure key storage
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
@@ -139,8 +137,23 @@ dependencies {
     // ✅ Giphy SDK for GIF keyboard
     implementation("com.giphy.sdk:ui:2.1.12")
 
+    // Firebase BoM for version management
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+
+    // Crashlytics and Analytics
+    implementation("com.google.firebase:firebase-crashlytics-ktx")
+    implementation("com.google.firebase:firebase-analytics-ktx")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
+    testImplementation("com.google.truth:truth:1.1.3")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+
+    // Hilt Testing
+    androidTestImplementation("com.google.dagger:hilt-android-testing:2.50")
+    kspAndroidTest("com.google.dagger:hilt-compiler:2.50")
+
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.08.00"))
