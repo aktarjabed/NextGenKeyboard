@@ -25,6 +25,7 @@ class PreferencesRepository @Inject constructor(
         val SELECTED_LAYOUT = stringPreferencesKey("selected_layout")
         val HAPTIC_FEEDBACK = booleanPreferencesKey("haptic_feedback")
         val SWIPE_TYPING = booleanPreferencesKey("swipe_typing")
+        val SELECTED_LANGUAGE = stringPreferencesKey("selected_language")
 
         // ✅ NEW: Privacy settings
         val CLIPBOARD_ENABLED = booleanPreferencesKey("clipboard_enabled")
@@ -38,6 +39,9 @@ class PreferencesRepository @Inject constructor(
 
     val selectedLayout: Flow<String> = context.dataStore.data
         .map { preferences -> preferences[PreferencesKeys.SELECTED_LAYOUT] ?: "QWERTY" }
+
+    val selectedLanguage: Flow<String> = context.dataStore.data
+        .map { preferences -> preferences[PreferencesKeys.SELECTED_LANGUAGE] ?: "en_US" }
 
     val isHapticFeedbackEnabled: Flow<Boolean> = context.dataStore.data
         .map { preferences -> preferences[PreferencesKeys.HAPTIC_FEEDBACK] ?: true }
@@ -79,6 +83,12 @@ class PreferencesRepository @Inject constructor(
     suspend fun setSwipeTyping(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.SWIPE_TYPING] = enabled
+        }
+    }
+
+    suspend fun setSelectedLanguage(languageCode: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SELECTED_LANGUAGE] = languageCode
         }
     }
 

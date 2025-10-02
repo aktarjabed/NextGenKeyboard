@@ -13,7 +13,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.nextgen.keyboard.data.model.Languages
 import com.nextgen.keyboard.ui.viewmodel.SettingsViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,13 +23,42 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val isDarkMode by viewModel.isDarkMode.collectAsState(initial = true)
-    val selectedLayout by viewModel.selectedLayout.collectAsState(initial = "QWERTY")
+    val selectedLanguageCode by viewModel.selectedLanguage.collectAsState(initial = "en_US")
+    val selectedLanguage = remember(selectedLanguageCode) {
+        Languages.getLanguageByCode(selectedLanguageCode)
+    }
     val isHapticEnabled by viewModel.isHapticEnabled.collectAsState(initial = true)
     val isSwipeEnabled by viewModel.isSwipeEnabled.collectAsState(initial = true)
     val isClipboardEnabled by viewModel.isClipboardEnabled.collectAsState(initial = true)
     val isBlockSensitive by viewModel.isBlockSensitive.collectAsState(initial = true)
     val autoDeleteDays by viewModel.autoDeleteDays.collectAsState(initial = 30)
     val maxClipboardItems by viewModel.maxClipboardItems.collectAsState(initial = 500)
+
+    val coroutineScope = rememberCoroutineScope()
+    val modalSheetState = rememberModalBottomSheetState()
+    var showLanguageSheet by remember { mutableStateOf(false) }
+
+    if (showLanguageSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showLanguageSheet = false },
+            sheetState = modalSheetState
+        ) {
+            LanguageSelectorSheet(
+                currentLanguage = selectedLanguage,
+                onLanguageSelected = { language ->
+                    viewModel.setLanguage(language.code)
+                    coroutineScope.launch {
+                        modalSheetState.hide()
+                    }.invokeOnCompletion {
+                        if (!modalSheetState.isVisible) {
+                            showLanguageSheet = false
+                        }
+                    }
+                },
+                onDismiss = { showLanguageSheet = false }
+            )
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -44,6 +75,15 @@ fun SettingsScreen(
         item {
             SettingsCard {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    ClickableSetting(
+                        icon = Icons.Default.Language,
+                        title = "Language",
+                        description = selectedLanguage.name,
+                        onClick = { showLanguageSheet = true }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Divider()
+                    Spacer(modifier = Modifier.height(16.dp))
                     SwitchSetting(
                         icon = Icons.Default.DarkMode,
                         title = "Dark Mode",
@@ -298,5 +338,28 @@ fun SwitchSetting(
             Text(text = description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+fun ClickableSetting(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+            Text(text = description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Icon(imageVector = Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

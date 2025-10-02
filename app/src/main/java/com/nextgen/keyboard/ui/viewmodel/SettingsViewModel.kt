@@ -21,6 +21,7 @@ class SettingsViewModel @Inject constructor(
     // Existing preferences
     val isDarkMode: StateFlow<Boolean> = preferencesRepository.isDarkMode
     val selectedLayout: StateFlow<String> = preferencesRepository.selectedLayout
+    val selectedLanguage: StateFlow<String> = preferencesRepository.selectedLanguage
     val isHapticEnabled: StateFlow<Boolean> = preferencesRepository.isHapticFeedbackEnabled
     val isSwipeEnabled: StateFlow<Boolean> = preferencesRepository.isSwipeTypingEnabled
 
@@ -44,6 +45,17 @@ class SettingsViewModel @Inject constructor(
                 Timber.d("✅ Dark mode ${if (enabled) "enabled" else "disabled"}")
             } catch (e: Exception) {
                 Timber.e(e, "Error setting dark mode")
+            }
+        }
+    }
+
+    fun setLanguage(languageCode: String) {
+        viewModelScope.launch {
+            try {
+                preferencesRepository.setSelectedLanguage(languageCode)
+                Timber.d("✅ Language changed to: $languageCode")
+            } catch (e: Exception) {
+                Timber.e(e, "Error setting language")
             }
         }
     }
