@@ -1,54 +1,67 @@
 package com.nextgen.keyboard.data.repository
 
-import android.content.Context
-import androidx.room.*
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.nextgen.keyboard.data.local.ClipboardDao
+import com.nextgen.keyboard.data.model.ClipboardEntity
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import timber.log.Timber
-import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Singleton
 class ClipboardRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    private val clipboardDao: ClipboardDao
 ) {
-    // Placeholder implementation - replace with Room database later
-    private val clipboardCache = mutableListOf<ClipboardItem>()
+    // Expose clipboard history as a Flow of domain items
+    fun getClipboardHistory(): Flow<List<ClipboardItem>> {
+        return clipboardDao.getRecentClips().map { entities ->
+            entities.map { entity ->
+                ClipboardItem(
+                    id = entity.id.toString(),
+                    text = entity.content,
+                    timestamp = entity.timestamp,
+                    isSensitive = entity.isEncrypted
+                )
+            }
+        }
+    }
 
-    fun getClipboardHistory(): Flow<List<ClipboardItem>> = flowOf(clipboardCache)
-
-    fun saveClip(text: String, isSensitive: Boolean = false) {
+    // Save a new clip (runs on IO thread via DAO)
+    suspend fun saveClip(text: String, isSensitive: Boolean = false) {
         if (text.isBlank()) return
 
-        val item = ClipboardItem(
-            id = UUID.randomUUID().toString(),
-            text = text,
-            timestamp = System.currentTimeMillis(),
-            isSensitive = isSensitive
-        )
-
-        clipboardCache.add(0, item)
-
-        // Limit cache size
-        if (clipboardCache.size > 500) {
-            clipboardCache.subList(500, clipboardCache.size).clear()
+        try {
+            val entity = ClipboardEntity(
+                content = text,
+                timestamp = System.currentTimeMillis(),
+                isEncrypted = isSensitive,
+                category = if (isSensitive) "sensitive" else "general"
+            )
+            clipboardDao.insert(entity)
+            Timber.d("✅ Saved clipboard item to DB")
+        } catch (e: Exception) {
+            Timber.e(e, "Error saving clip to DB")
         }
-
-        Timber.d("✅ Saved clipboard item: ${text.take(50)}...")
     }
 
-    fun clearAllClips() {
-        clipboardCache.clear()
-        Timber.d("✅ Clipboard history cleared")
+    // Clear all clips
+    suspend fun clearAllClips() {
+        try {
+            clipboardDao.deleteAllClips()
+            Timber.d("✅ Clipboard history cleared from DB")
+        } catch (e: Exception) {
+            Timber.e(e, "Error clearing clipboard DB")
+        }
     }
 
-    fun performManualCleanup(): Result<Unit> {
+    // Manual cleanup of old items
+    suspend fun performManualCleanup(): Result<Unit> {
         return try {
-            // Remove items older than 30 days by default
             val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
-            clipboardCache.removeAll { it.timestamp < thirtyDaysAgo }
+            clipboardDao.deleteOlderThan(thirtyDaysAgo)
             Timber.d("✅ Manual cleanup completed")
             Result.success(Unit)
         } catch (e: Exception) {
