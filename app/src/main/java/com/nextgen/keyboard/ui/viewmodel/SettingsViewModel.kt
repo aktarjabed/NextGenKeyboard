@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -29,6 +30,7 @@ class SettingsViewModel @Inject constructor(
     val isBlockSensitive: StateFlow<Boolean> = preferencesRepository.isBlockSensitiveContent
     val autoDeleteDays: StateFlow<Int> = preferencesRepository.autoDeleteDays
     val maxClipboardItems: StateFlow<Int> = preferencesRepository.maxClipboardItems
+    val isCrashReportingEnabled: StateFlow<Boolean> = preferencesRepository.isCrashReportingEnabled
 
     // ✅ NEW: UI state for operations
     private val _cleanupInProgress = MutableStateFlow(false)
@@ -122,6 +124,19 @@ class SettingsViewModel @Inject constructor(
                 Timber.d("✅ Max clipboard items set to $count")
             } catch (e: Exception) {
                 Timber.e(e, "Error setting max clipboard items")
+            }
+        }
+    }
+
+    fun setCrashReportingEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                preferencesRepository.setCrashReportingEnabled(enabled)
+                // Apply immediately
+                FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(enabled)
+                Timber.d("✅ Crash reporting ${if (enabled) "enabled" else "disabled"}")
+            } catch (e: Exception) {
+                Timber.e(e, "Error setting crash reporting")
             }
         }
     }

@@ -41,10 +41,7 @@ object DatabaseModule {
                 }
             })
 
-        // Use fallback migration only in debug builds
-        if (BuildConfig.DEBUG) {
-            builder.fallbackToDestructiveMigration()
-        }
+        // Removed fallbackToDestructiveMigration to prevent data loss
 
         return builder.build()
     }

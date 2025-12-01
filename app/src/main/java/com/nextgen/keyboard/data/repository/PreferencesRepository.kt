@@ -31,6 +31,7 @@ class PreferencesRepository @Inject constructor(
         val BLOCK_SENSITIVE_CONTENT = booleanPreferencesKey("block_sensitive_content")
         val AUTO_DELETE_DAYS = intPreferencesKey("auto_delete_days")
         val MAX_CLIPBOARD_ITEMS = intPreferencesKey("max_clipboard_items")
+        val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled") // Opt-in
 
         // ✅ NEW: Language and Theme settings
         val CURRENT_LANGUAGE = stringPreferencesKey("current_language")
@@ -62,6 +63,9 @@ class PreferencesRepository @Inject constructor(
 
     val maxClipboardItems: Flow<Int> = context.dataStore.data
         .map { preferences -> preferences[PreferencesKeys.MAX_CLIPBOARD_ITEMS] ?: 500 }
+
+    val isCrashReportingEnabled: Flow<Boolean> = context.dataStore.data
+        .map { preferences -> preferences[PreferencesKeys.CRASH_REPORTING_ENABLED] ?: false }
 
     // ✅ NEW: Language and Theme flows
     val currentLanguage: Flow<String> = context.dataStore.data
@@ -123,6 +127,12 @@ class PreferencesRepository @Inject constructor(
     suspend fun setMaxClipboardItems(count: Int) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.MAX_CLIPBOARD_ITEMS] = count.coerceIn(50, 2000)
+        }
+    }
+
+    suspend fun setCrashReportingEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CRASH_REPORTING_ENABLED] = enabled
         }
     }
 
