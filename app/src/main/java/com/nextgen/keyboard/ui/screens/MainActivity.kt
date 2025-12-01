@@ -23,6 +23,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.nextgen.keyboard.R
+import android.content.Context
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.nextgen.keyboard.ui.theme.NextGenKeyboardTheme
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
@@ -37,6 +47,9 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
 
         Timber.d("MainActivity created")
+
+        val prefs = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val isFirstLaunch = prefs.getBoolean("is_first_launch", true)
 
         setContent {
             NextGenKeyboardTheme {
@@ -380,5 +393,21 @@ fun isKeyboardSelectedInSystem(context: android.content.Context): Boolean {
     } catch (e: Exception) {
         Timber.e(e, "Error checking keyboard selected status")
         false
+    }
+                    var showOnboarding by remember { mutableStateOf(isFirstLaunch) }
+
+                    if (showOnboarding) {
+                        OnboardingScreen(
+                            onComplete = {
+                                showOnboarding = false
+                                prefs.edit().putBoolean("is_first_launch", false).apply()
+                            }
+                        )
+                    } else {
+                        MainScreen()
+                    }
+                }
+            }
+        }
     }
 }
