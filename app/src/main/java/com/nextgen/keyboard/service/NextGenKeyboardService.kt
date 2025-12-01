@@ -67,6 +67,16 @@ class NextGenKeyboardService : InputMethodService() {
 
     private fun initializeComponents() {
         try {
+            viewModel = KeyboardViewModel(autocorrectEngine, preferencesRepository, giphyManager)
+            if (BuildConfig.GIPHY_API_KEY != "YOUR_KEY_HERE") {
+                giphyManager.initialize(BuildConfig.GIPHY_API_KEY)
+            }
+            logInfo("Keyboard components initialized successfully.")
+        } catch (oom: OutOfMemoryError) {
+            logError("Out of memory during initialization", oom)
+            throw oom
+        } catch (e: Exception) {
+            logError("Unexpected error during initialization", e)
             viewModel = KeyboardViewModel(
                 autocorrectEngine,
                 preferencesRepository,
@@ -110,6 +120,11 @@ class NextGenKeyboardService : InputMethodService() {
         }
     }
 
+    override fun onStartInputView(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        _keyboardState.value = KeyboardState.Main
+    }
+
     override fun onCreateInputView(): View {
         return try {
             if (useBasicKeyboard) {
@@ -122,6 +137,14 @@ class NextGenKeyboardService : InputMethodService() {
             composeView = ComposeView(this).apply {
                 setContent {
                     NextGenKeyboardTheme {
+                        val currentKeyboardState by keyboardState.collectAsState()
+                        val suggestions by viewModel.suggestions.collectAsState()
+                        val voiceState by voiceInputManager.voiceState.collectAsState()
+                        val voiceVolume by voiceInputManager.volume.collectAsState()
+
+                        LaunchedEffect(voiceState) {
+                            if (voiceState is VoiceInputState.Result) {
+                                commitText((voiceState as VoiceInputState.Result).text)
                         KeyboardContent()
                     }
                 }
@@ -203,6 +226,42 @@ class NextGenKeyboardService : InputMethodService() {
                 )
             }
 
+                        when (currentKeyboardState) {
+                            is KeyboardState.Main -> {
+                                val language by viewModel.currentLanguage.collectAsState()
+                                MainKeyboardView(
+                                    language = language,
+                                    suggestions = suggestions.map { it.suggestion },
+                                    onSuggestionClick = { suggestion -> handleKeyPress(suggestion) },
+                                    onKeyClick = { key -> handleKeyPress(key) },
+                                    onVoiceInputClick = { _keyboardState.value = KeyboardState.Voice },
+                                    onGifKeyboardClick = { _keyboardState.value = KeyboardState.Gif },
+                                    onSettingsClick = {
+                                        val intent = Intent(this@NextGenKeyboardService, MainActivity::class.java).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        startActivity(intent)
+                                    }
+                                )
+                            }
+                            is KeyboardState.Voice -> {
+                                VoiceInputSheet(
+                                    state = voiceState,
+                                    volume = voiceVolume,
+                                    onStartListening = { voiceInputManager.startListening(viewModel.currentLanguage.value.code) },
+                                    onStopListening = { voiceInputManager.stopListening() },
+                                    onCancel = { _keyboardState.value = KeyboardState.Main }
+                                )
+                            }
+                            is KeyboardState.Gif -> {
+                                GifKeyboard(
+                                    viewModel = viewModel,
+                                    onGifSelected = { media ->
+                                        commitText(media.images.original?.gifUrl ?: "")
+                                        _keyboardState.value = KeyboardState.Main
+                                    },
+                                    onClose = { _keyboardState.value = KeyboardState.Main }
+                                )
             is KeyboardState.Gif -> {
                 GifKeyboard(
                     viewModel = viewModel,
@@ -227,6 +286,10 @@ class NextGenKeyboardService : InputMethodService() {
     }
 
     private fun handleKeyPress(text: String) {
+        try {
+            if (text.isBlank()) {
+                logWarning("Attempted to commit empty text.")
+                return
         if (text.isBlank()) return
 
         serviceScope?.launch {
