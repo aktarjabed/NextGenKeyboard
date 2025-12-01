@@ -1,54 +1,72 @@
 package com.nextgen.keyboard.feature.gif
 
 import android.content.Context
-import com.giphy.sdk.core.Giphy
+import com.giphy.sdk.core.GiphyCore
 import com.giphy.sdk.core.models.Media
-import com.giphy.sdk.core.network.api.CompletionHandler
 import com.giphy.sdk.core.network.api.GPHApi
-import com.giphy.sdk.core.network.response.ListMediaResponse
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.giphy.sdk.core.network.api.GPHApiClient
+import com.giphy.sdk.core.network.response.MediaResponse
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class GiphyManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    private val context: Context
 ) {
-    private var giphyApi: GPHApi? = null
+    private var apiClient: GPHApi? = null
+    private var isInitialized = false
 
     fun initialize(apiKey: String) {
-        if (apiKey.isBlank() || apiKey == "YOUR_GIPHY_API_KEY") {
-            Timber.w("Giphy API key is not set. GIF feature will be disabled.")
+        if (apiKey.isBlank()) {
+            Timber.w("Giphy API key is blank, GIF functionality disabled")
             return
         }
-        Giphy.configure(context, apiKey)
-        giphyApi = Giphy.getCore()
+
+        try {
+            GiphyCore.configure(context, apiKey)
+            apiClient = GPHApiClient(apiKey)
+            isInitialized = true
+            Timber.d("✅ GiphyManager initialized successfully")
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to initialize GiphyManager")
+            isInitialized = false
+        }
     }
 
-    fun searchGifs(query: String, completion: (List<Media>) -> Unit) {
-        giphyApi?.search(query, null, null, null, null, null, object : CompletionHandler<ListMediaResponse> {
-            override fun onComplete(result: ListMediaResponse?, e: Throwable?) {
-                if (e != null) {
-                    Timber.e(e, "Error searching for GIFs")
-                    completion(emptyList())
-                    return
-                }
-                completion(result?.data ?: emptyList())
+    fun trendingGifs(callback: (List<Media>) -> Unit) {
+        if (!isInitialized) {
+            callback(emptyList())
+            return
+        }
+
+        apiClient?.trending { mediaResponse: MediaResponse?, throwable: Throwable? ->
+            throwable?.let {
+                Timber.e(it, "Error fetching trending GIFs")
+                callback(emptyList())
+                return@trending
             }
-        }) ?: completion(emptyList())
+
+            callback(mediaResponse?.data?.take(20) ?: emptyList())
+        } ?: callback(emptyList())
     }
 
-    fun trendingGifs(completion: (List<Media>) -> Unit) {
-        giphyApi?.trending(null, null, null, object : CompletionHandler<ListMediaResponse> {
-            override fun onComplete(result: ListMediaResponse?, e: Throwable?) {
-                if (e != null) {
-                    Timber.e(e, "Error fetching trending GIFs")
-                    completion(emptyList())
-                    return
-                }
-                completion(result?.data ?: emptyList())
+    fun searchGifs(query: String, callback: (List<Media>) -> Unit) {
+        if (!isInitialized || query.isBlank()) {
+            callback(emptyList())
+            return
+        }
+
+        apiClient?.search(query) { mediaResponse: MediaResponse?, throwable: Throwable? ->
+            throwable?.let {
+                Timber.e(it, "Error searching GIFs")
+                callback(emptyList())
+                return@search
             }
-        }) ?: completion(emptyList())
+
+            callback(mediaResponse?.data?.take(20) ?: emptyList())
+        } ?: callback(emptyList())
     }
+
+    fun isReady(): Boolean = isInitialized
 }
