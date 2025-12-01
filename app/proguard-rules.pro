@@ -1,6 +1,6 @@
 # Add project specific ProGuard rules here.
 
-# Keep keyboard service
+# Keep keyboard service (Required for Manifest reference)
 -keep class com.nextgen.keyboard.service.NextGenKeyboardService { *; }
 
 # Keep all Hilt generated code
@@ -9,15 +9,13 @@
 -keep class * extends androidx.hilt.work.HiltWorkerFactory
 -keep class * extends androidx.hilt.work.HiltWorker
 
-# Keep Room entities and DAOs
--keep class com.nextgen.keyboard.data.local.** { *; }
--keep class com.nextgen.keyboard.data.model.** { *; }
+# Keep Room entities (Required for Reflection)
+-keep class com.nextgen.keyboard.data.model.ClipboardEntity { *; }
+-keep class com.nextgen.keyboard.data.local.ClipboardDao { *; }
+-keep class com.nextgen.keyboard.data.local.ClipboardDatabase { *; }
 
-# Keep autocorrect engine
--keep class com.nextgen.keyboard.feature.autocorrect.** { *; }
-
-# Keep security classes
--keep class com.nextgen.keyboard.security.** { *; }
+# Keep security classes (Prevent obfuscation of encryption logic if using reflection, otherwise obfuscate)
+# Removed -keep class com.nextgen.keyboard.security.** { *; } to allow obfuscation
 
 # Firebase
 -keep class com.google.firebase.** { *; }

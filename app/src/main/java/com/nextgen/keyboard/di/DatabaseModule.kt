@@ -42,6 +42,10 @@ object DatabaseModule {
                     Timber.d("Database opened successfully")
                 }
             })
+
+        // Removed fallbackToDestructiveMigration to prevent data loss
+
+        return builder.build()
             .apply {
                 // Use fallback migration only in debug builds
                 if (BuildConfig.DEBUG) {
