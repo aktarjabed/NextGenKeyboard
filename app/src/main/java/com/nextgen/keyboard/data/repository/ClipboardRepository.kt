@@ -44,11 +44,17 @@ class ClipboardRepository @Inject constructor(
         Timber.d("✅ Clipboard history cleared")
     }
 
-    fun performManualCleanup() {
-        // Remove items older than 30 days by default
-        val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
-        clipboardCache.removeAll { it.timestamp < thirtyDaysAgo }
-        Timber.d("✅ Manual cleanup completed")
+    fun performManualCleanup(): Result<Unit> {
+        return try {
+            // Remove items older than 30 days by default
+            val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+            clipboardCache.removeAll { it.timestamp < thirtyDaysAgo }
+            Timber.d("✅ Manual cleanup completed")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Timber.e(e, "Error performing manual cleanup")
+            Result.failure(e)
+        }
     }
 }
 

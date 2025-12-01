@@ -10,4 +10,7 @@ data class KeyData(
     val primary: String,
     val secondary: String? = null,
     val accents: List<String>? = null
-)
+) {
+    // Helper for UI compatibility
+    val display: String get() = primary
+}
