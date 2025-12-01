@@ -54,6 +54,7 @@ class NextGenKeyboardService : InputMethodService() {
 
     override fun onCreate() {
         super.onCreate()
+        viewModel = KeyboardViewModel(autocorrectEngine, preferencesRepository, giphyManager)
         serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
         try {
