@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Permissions -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Required permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -26,6 +29,13 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.NextGenKeyboard"
+        tools:targetApi="31">
+
+        <!-- Main Activity -->
+        <activity
+            android:name=".ui.screens.MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.NextGenKeyboard">
         android:hardwareAccelerated="true"
         tools:targetApi="31">
 
@@ -41,6 +51,11 @@
             </intent-filter>
         </activity>
 
+        <!-- Keyboard Input Method Service -->
+        <service
+            android:name=".service.NextGenKeyboardService"
+            android:exported="true"
+            android:permission="android.permission.BIND_INPUT_METHOD">
         <service
             android:name=".service.NextGenKeyboardService"
             android:exported="true"

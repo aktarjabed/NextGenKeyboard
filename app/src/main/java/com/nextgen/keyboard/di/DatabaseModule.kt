@@ -29,6 +29,7 @@ object DatabaseModule {
             ClipboardDatabase::class.java,
             ClipboardDatabase.DATABASE_NAME
         )
+            .fallbackToDestructiveMigration()
             // Add the migrations from the ClipboardDatabase companion object
             .addMigrations(ClipboardDatabase.MIGRATION_1_2, ClipboardDatabase.MIGRATION_2_3)
             .addCallback(object : RoomDatabase.Callback() {

@@ -1,6 +1,11 @@
 package com.nextgen.keyboard
 
 import android.app.Application
+import dagger.hilt.android.HiltAndroidApp
+import timber.log.Timber
+
+@HiltAndroidApp
+class NextGenKeyboardApp : Application() {
 import android.content.Context
 import android.content.res.Configuration
 import android.util.Log
@@ -26,6 +31,13 @@ class NextGenKeyboardApp : Application(), WorkConfiguration.Provider {
     override fun onCreate() {
         super.onCreate()
 
+        // Initialize Timber for logging
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
+
+        Timber.d("NextGenKeyboard App Started")
+    }
         // Initialize Logging
         initializeLogging()
 

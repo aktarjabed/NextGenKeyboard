@@ -5,6 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.nextgen.keyboard.data.repository.ClipboardRepository
 import com.nextgen.keyboard.data.repository.PreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import timber.log.Timber
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -86,6 +90,13 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun clearClipboardHistory() {
+        viewModelScope.launch {
+            try {
+                clipboardRepository.clearAllClips()
+                Timber.d("✅ Clipboard history cleared")
+            } catch (e: Exception) {
+                Timber.e(e, "Error clearing clipboard")
     // ✅ NEW: Privacy setters
     fun setClipboardEnabled(enabled: Boolean) {
         viewModelScope.launch {

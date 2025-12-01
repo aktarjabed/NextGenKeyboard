@@ -2,6 +2,8 @@ package com.nextgen.keyboard.data.repository
 
 import com.nextgen.keyboard.data.local.ClipDao
 import com.nextgen.keyboard.data.model.Clip
+import kotlinx.coroutines.flow.Flow
+import timber.log.Timber
 import android.content.Context
 import androidx.room.*
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -40,6 +42,9 @@ class ClipboardRepository @Inject constructor(
             if (content.isBlank()) {
                 return Result.failure(IllegalArgumentException("Clip content cannot be blank"))
             }
+
+            val clip = Clip(content = content.trim())
+            val id = clipDao.insertClip(clip)
     @ApplicationContext private val context: Context
 ) {
     // Placeholder implementation - replace with Room database later
@@ -97,6 +102,8 @@ class ClipboardRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error clearing clips")
             Result.failure(e)
+        }
+    }
         clipboardCache.add(0, item)
 
         // Limit cache size
@@ -114,6 +121,7 @@ class ClipboardRepository @Inject constructor(
             Result.failure(e)
         }
     }
+}
 
     // ✅ NEW: Auto-cleanup old clips
     private suspend fun performAutoCleanup() {

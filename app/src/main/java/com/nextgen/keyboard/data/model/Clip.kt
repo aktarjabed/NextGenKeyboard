@@ -13,6 +13,7 @@ data class Clip(
     val id: Long = 0,
     val content: String,
     val timestamp: Long = System.currentTimeMillis(),
+    val isPinned: Boolean = false
     val isPinned: Boolean = false,
 
     // New fields for v2 and v3

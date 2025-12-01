@@ -1,5 +1,8 @@
 package com.nextgen.keyboard.data.local
 
+import androidx.room.Database
+import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import android.util.Log
 import androidx.room.Database
 import androidx.room.RoomDatabase
@@ -10,6 +13,7 @@ import com.nextgen.keyboard.data.model.Clip
 
 @Database(
     entities = [Clip::class],
+    version = 1,
     version = 3, // Incremented version
     exportSchema = true
 )
