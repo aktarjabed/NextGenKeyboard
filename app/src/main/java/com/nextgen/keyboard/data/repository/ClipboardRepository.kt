@@ -2,9 +2,13 @@ package com.nextgen.keyboard.data.repository
 
 import com.nextgen.keyboard.data.local.ClipDao
 import com.nextgen.keyboard.data.model.Clip
+import android.content.Context
+import androidx.room.*
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import timber.log.Timber
-import java.util.concurrent.TimeUnit
+import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,18 +40,24 @@ class ClipboardRepository @Inject constructor(
             if (content.isBlank()) {
                 return Result.failure(IllegalArgumentException("Clip content cannot be blank"))
             }
+    @ApplicationContext private val context: Context
+) {
+    // Placeholder implementation - replace with Room database later
+    private val clipboardCache = mutableListOf<ClipboardItem>()
 
-            // ✅ Check if content looks sensitive (don't save)
-            if (isSensitiveContent(content)) {
-                Timber.d("🔒 Skipped saving sensitive content")
-                return Result.failure(SecurityException("Sensitive content not saved"))
-            }
+    fun getClipboardHistory(): Flow<List<ClipboardItem>> = flowOf(clipboardCache)
 
             val clip = Clip(content = content.trim())
             val id = clipDao.insertClip(clip)
+    fun saveClip(text: String, isSensitive: Boolean = false) {
+        if (text.isBlank()) return
 
-            // ✅ Auto-cleanup after saving
-            performAutoCleanup()
+        val item = ClipboardItem(
+            id = UUID.randomUUID().toString(),
+            text = text,
+            timestamp = System.currentTimeMillis(),
+            isSensitive = isSensitive
+        )
 
             Timber.d("Saved clip: $content")
             Result.success(id)
@@ -87,8 +97,12 @@ class ClipboardRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error clearing clips")
             Result.failure(e)
+        clipboardCache.add(0, item)
+
+        // Limit cache size
+        if (clipboardCache.size > 500) {
+            clipboardCache.subList(500, clipboardCache.size).clear()
         }
-    }
 
     suspend fun clearUnpinnedClips(): Result<Unit> {
         return try {
@@ -121,46 +135,31 @@ class ClipboardRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error during auto-cleanup")
         }
+        Timber.d("✅ Saved clipboard item: ${text.take(50)}...")
     }
 
-    // ✅ NEW: Manual cleanup (can be called from settings)
-    suspend fun performManualCleanup(): Result<Unit> {
+    fun clearAllClips() {
+        clipboardCache.clear()
+        Timber.d("✅ Clipboard history cleared")
+    }
+
+    fun performManualCleanup(): Result<Unit> {
         return try {
-            performAutoCleanup()
+            // Remove items older than 30 days by default
+            val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+            clipboardCache.removeAll { it.timestamp < thirtyDaysAgo }
             Timber.d("✅ Manual cleanup completed")
             Result.success(Unit)
         } catch (e: Exception) {
-            Timber.e(e, "Error during manual cleanup")
+            Timber.e(e, "Error performing manual cleanup")
             Result.failure(e)
         }
     }
-
-    // ✅ NEW: Detect sensitive content
-    private fun isSensitiveContent(content: String): Boolean {
-        val trimmed = content.trim()
-
-        // Check for OTPs (4-8 digit numbers)
-        if (trimmed.matches(Regex("^\\d{4,8}$"))) {
-            return true
-        }
-
-        // Check for credit card numbers (13-19 digits with optional spaces/dashes)
-        val cardPattern = Regex("^[0-9]{13,19}$|^[0-9\\s-]{15,23}$")
-        if (trimmed.replace("[\\s-]".toRegex(), "").matches(cardPattern)) {
-            return true
-        }
-
-        // Check for email + password patterns
-        if (trimmed.contains("password", ignoreCase = true) && trimmed.length < 50) {
-            return true
-        }
-
-        // Check for common password indicators
-        val passwordKeywords = listOf("pass:", "pwd:", "password:", "pin:")
-        if (passwordKeywords.any { trimmed.lowercase().contains(it) }) {
-            return true
-        }
-
-        return false
-    }
 }
+
+data class ClipboardItem(
+    val id: String,
+    val text: String,
+    val timestamp: Long,
+    val isSensitive: Boolean
+)

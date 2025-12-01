@@ -30,6 +30,9 @@ class SettingsViewModel @Inject constructor(
     val autoDeleteDays: StateFlow<Int> = preferencesRepository.autoDeleteDays
     val maxClipboardItems: StateFlow<Int> = preferencesRepository.maxClipboardItems
 
+    // ✅ NEW: Giphy API Key
+    val giphyApiKey: StateFlow<String> = preferencesRepository.giphyApiKey
+
     // ✅ NEW: UI state for operations
     private val _cleanupInProgress = MutableStateFlow(false)
     val cleanupInProgress = _cleanupInProgress.asStateFlow()
@@ -161,5 +164,16 @@ class SettingsViewModel @Inject constructor(
 
     fun clearCleanupResult() {
         _cleanupResult.value = null
+    }
+
+    fun setGiphyApiKey(apiKey: String) {
+        viewModelScope.launch {
+            try {
+                preferencesRepository.setGiphyApiKey(apiKey)
+                Timber.d("✅ Giphy API key updated")
+            } catch (e: Exception) {
+                Timber.e(e, "Error setting Giphy API key")
+            }
+        }
     }
 }
