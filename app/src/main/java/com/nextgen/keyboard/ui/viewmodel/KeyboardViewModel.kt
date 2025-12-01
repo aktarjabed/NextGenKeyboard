@@ -34,21 +34,27 @@ class KeyboardViewModel @Inject constructor(
     private val _searchedGifs = MutableStateFlow<List<Media>>(emptyList())
     val searchedGifs = _searchedGifs.asStateFlow()
 
+    private var _isAutocorrectEnabled = true // Cache for synchronous access
+
     init {
         viewModelScope.launch {
             preferencesRepository.currentLanguage.collect { langCode ->
                 _currentLanguage.value = LanguagesPro.getLanguageByCode(langCode)
             }
         }
+
         viewModelScope.launch {
-            preferencesRepository.giphyApiKey.collect { apiKey ->
-                giphyManager.initialize(apiKey)
-                if (apiKey.isNotBlank()) {
-                    fetchTrendingGifs()
-                }
+            preferencesRepository.isAutocorrectEnabled.collect { enabled ->
+                _isAutocorrectEnabled = enabled
             }
         }
+
+        // TODO: Initialize GiphyManager with an API key from preferences
+        fetchTrendingGifs()
     }
+
+    // Synchronous check for the Service to avoid blocking
+    fun isAutocorrectEnabled(): Boolean = _isAutocorrectEnabled
 
     fun onTextUpdated(text: String) {
         viewModelScope.launch {

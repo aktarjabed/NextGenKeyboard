@@ -28,7 +28,6 @@ fun SettingsScreen(
     val isBlockSensitive by viewModel.isBlockSensitive.collectAsState(initial = true)
     val autoDeleteDays by viewModel.autoDeleteDays.collectAsState(initial = 30)
     val maxClipboardItems by viewModel.maxClipboardItems.collectAsState(initial = 500)
-    val giphyApiKey by viewModel.giphyApiKey.collectAsState(initial = "")
 
     LazyColumn(
         modifier = Modifier
@@ -249,28 +248,6 @@ fun SettingsScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                }
-            }
-        }
-
-        item {
-            SectionHeader(
-                title = "Integrations",
-                icon = Icons.Default.Power
-            )
-        }
-
-        item {
-            SettingsCard {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    OutlinedTextField(
-                        value = giphyApiKey,
-                        onValueChange = { viewModel.setGiphyApiKey(it) },
-                        label = { Text("Giphy API Key") },
-                        placeholder = { Text("Enter your Giphy API key") },
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.Gif, contentDescription = null) }
-                    )
                 }
             }
         }

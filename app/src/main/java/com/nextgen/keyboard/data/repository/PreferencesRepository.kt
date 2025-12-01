@@ -25,21 +25,19 @@ class PreferencesRepository @Inject constructor(
         val SELECTED_LAYOUT = stringPreferencesKey("selected_layout")
         val HAPTIC_FEEDBACK = booleanPreferencesKey("haptic_feedback")
         val SWIPE_TYPING = booleanPreferencesKey("swipe_typing")
+        val AUTOCORRECT_ENABLED = booleanPreferencesKey("autocorrect_enabled") // ✅ Added
 
         // ✅ NEW: Privacy settings
         val CLIPBOARD_ENABLED = booleanPreferencesKey("clipboard_enabled")
         val BLOCK_SENSITIVE_CONTENT = booleanPreferencesKey("block_sensitive_content")
         val AUTO_DELETE_DAYS = intPreferencesKey("auto_delete_days")
         val MAX_CLIPBOARD_ITEMS = intPreferencesKey("max_clipboard_items")
-        val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled") // Opt-in
+        val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
 
         // ✅ NEW: Language and Theme settings
         val CURRENT_LANGUAGE = stringPreferencesKey("current_language")
         val ENABLED_LANGUAGES = stringPreferencesKey("enabled_languages")
         val CURRENT_THEME = stringPreferencesKey("current_theme")
-
-        // ✅ NEW: Giphy API Key
-        val GIPHY_API_KEY = stringPreferencesKey("giphy_api_key")
     }
 
     val isDarkMode: Flow<Boolean> = context.dataStore.data
@@ -53,6 +51,9 @@ class PreferencesRepository @Inject constructor(
 
     val isSwipeTypingEnabled: Flow<Boolean> = context.dataStore.data
         .map { preferences -> preferences[PreferencesKeys.SWIPE_TYPING] ?: true }
+
+    val isAutocorrectEnabled: Flow<Boolean> = context.dataStore.data // ✅ Added
+        .map { preferences -> preferences[PreferencesKeys.AUTOCORRECT_ENABLED] ?: true }
 
     // ✅ NEW: Privacy preferences
     val isClipboardEnabled: Flow<Boolean> = context.dataStore.data
@@ -84,10 +85,6 @@ class PreferencesRepository @Inject constructor(
     val currentTheme: Flow<String> = context.dataStore.data
         .map { preferences -> preferences[PreferencesKeys.CURRENT_THEME] ?: "dark_blue" }
 
-    // ✅ NEW: Giphy API Key flow
-    val giphyApiKey: Flow<String> = context.dataStore.data
-        .map { preferences -> preferences[PreferencesKeys.GIPHY_API_KEY] ?: "" }
-
     suspend fun setDarkMode(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.DARK_MODE] = enabled
@@ -109,6 +106,12 @@ class PreferencesRepository @Inject constructor(
     suspend fun setSwipeTyping(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.SWIPE_TYPING] = enabled
+        }
+    }
+
+    suspend fun setAutocorrectEnabled(enabled: Boolean) { // ✅ Added
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.AUTOCORRECT_ENABLED] = enabled
         }
     }
 
@@ -159,13 +162,6 @@ class PreferencesRepository @Inject constructor(
     suspend fun setCurrentTheme(themeName: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.CURRENT_THEME] = themeName
-        }
-    }
-
-    // ✅ NEW: Giphy API Key setter
-    suspend fun setGiphyApiKey(apiKey: String) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.GIPHY_API_KEY] = apiKey
         }
     }
 }
