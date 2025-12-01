@@ -40,6 +40,14 @@ class AdvancedAutocorrectEngine @Inject constructor(
         }
     }
 
+    /**
+     * Load dictionaries for multiple languages
+     */
+    private fun loadDictionaries() {
+        // Load English dictionary
+        dictionaries["en"] = loadEnglishDictionary()
+        dictionaries["es"] = loadSpanishDictionary()
+        dictionaries["de"] = loadGermanDictionary()
     private suspend fun loadDictionaries() = withContext(Dispatchers.IO) {
         try {
             // Load English dictionary
@@ -89,6 +97,30 @@ class AdvancedAutocorrectEngine @Inject constructor(
         return basicWords
     }
 
+    private fun loadSpanishDictionary(): Set<String> {
+        return setOf(
+            "el", "la", "de", "y", "a", "en", "que", "es", "por", "un",
+            "con", "no", "una", "su", "para", "como", "más", "pero", "las", "le",
+            "ser", "estar", "haber", "tener", "hacer", "decir", "ir", "ver", "dar",
+            "saber", "querer", "llegar", "pasar", "deber", "poner", "parecer", "quedar",
+            "creer", "hablar", "llevar", "dejar", "seguir", "encontrar", "llamar", "venir",
+            "hola", "gracias", "adiós", "por favor", "lo siento", "buenos días", "buenas tardes", "buenas noches"
+        )
+    }
+
+    private fun loadGermanDictionary(): Set<String> {
+        return setOf(
+            "der", "die", "das", "und", "in", "den", "von", "zu", "mit", "sich",
+            "auf", "für", "ist", "im", "dass", "nicht", "ein", "eine", "als", "auch",
+            "sein", "haben", "werden", "können", "müssen", "sagen", "geben", "machen", "kommen",
+            "sollen", "wollen", "gehen", "wissen", "sehen", "lassen", "stehen", "finden",
+            "hallo", "danke", "tschüss", "bitte", "entschuldigung", "guten morgen", "guten tag", "guten abend"
+        )
+    }
+
+    /**
+     * Get advanced suggestions with context awareness
+     */
     suspend fun getAdvancedSuggestions(
         word: String,
         context: WordContext,

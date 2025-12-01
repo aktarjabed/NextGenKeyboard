@@ -37,6 +37,9 @@ class PreferencesRepository @Inject constructor(
         val CURRENT_LANGUAGE = stringPreferencesKey("current_language")
         val ENABLED_LANGUAGES = stringPreferencesKey("enabled_languages")
         val CURRENT_THEME = stringPreferencesKey("current_theme")
+
+        // ✅ NEW: Giphy API Key
+        val GIPHY_API_KEY = stringPreferencesKey("giphy_api_key")
     }
 
     val isDarkMode: Flow<Boolean> = context.dataStore.data
@@ -80,6 +83,10 @@ class PreferencesRepository @Inject constructor(
 
     val currentTheme: Flow<String> = context.dataStore.data
         .map { preferences -> preferences[PreferencesKeys.CURRENT_THEME] ?: "dark_blue" }
+
+    // ✅ NEW: Giphy API Key flow
+    val giphyApiKey: Flow<String> = context.dataStore.data
+        .map { preferences -> preferences[PreferencesKeys.GIPHY_API_KEY] ?: "" }
 
     suspend fun setDarkMode(enabled: Boolean) {
         context.dataStore.edit { preferences ->
@@ -152,6 +159,13 @@ class PreferencesRepository @Inject constructor(
     suspend fun setCurrentTheme(themeName: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.CURRENT_THEME] = themeName
+        }
+    }
+
+    // ✅ NEW: Giphy API Key setter
+    suspend fun setGiphyApiKey(apiKey: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.GIPHY_API_KEY] = apiKey
         }
     }
 }

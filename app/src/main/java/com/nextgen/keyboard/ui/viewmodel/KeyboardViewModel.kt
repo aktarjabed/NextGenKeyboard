@@ -40,8 +40,14 @@ class KeyboardViewModel @Inject constructor(
                 _currentLanguage.value = LanguagesPro.getLanguageByCode(langCode)
             }
         }
-        // TODO: Initialize GiphyManager with an API key from preferences
-        fetchTrendingGifs()
+        viewModelScope.launch {
+            preferencesRepository.giphyApiKey.collect { apiKey ->
+                giphyManager.initialize(apiKey)
+                if (apiKey.isNotBlank()) {
+                    fetchTrendingGifs()
+                }
+            }
+        }
     }
 
     fun onTextUpdated(text: String) {
