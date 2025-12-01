@@ -14,7 +14,7 @@ import androidx.core.content.ContextCompat
 import com.nextgen.keyboard.BuildConfig
 import com.nextgen.keyboard.data.repository.PreferencesRepository
 import com.nextgen.keyboard.feature.autocorrect.AdvancedAutocorrectEngine
-import com.nextgen.keyboard.feature.giphy.GiphyManager
+import com.nextgen.keyboard.feature.gif.GiphyManager
 import com.nextgen.keyboard.feature.voice.VoiceInputManager
 import com.nextgen.keyboard.feature.voice.VoiceInputState
 import com.nextgen.keyboard.ui.screens.MainActivity
@@ -76,7 +76,7 @@ class NextGenKeyboardService : InputMethodService() {
             // Initialize Giphy with proper error handling
             val giphyApiKey = getGiphyApiKey()
             if (giphyApiKey.isNotEmpty()) {
-                giphyManager.initialize(this, giphyApiKey)
+                giphyManager.initialize(giphyApiKey)
             } else {
                 logWarning("Giphy API key not configured")
             }
@@ -95,7 +95,7 @@ class NextGenKeyboardService : InputMethodService() {
             composeView = null
 
             voiceInputManager.destroy()
-            giphyManager.cleanup()
+            // giphyManager.cleanup() - Removed as cleanup() doesn't exist in new GiphyManager
 
             // Cancel all coroutines
             serviceScope?.cancel()
