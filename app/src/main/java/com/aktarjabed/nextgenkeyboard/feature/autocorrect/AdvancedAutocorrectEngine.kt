@@ -1,4 +1,5 @@
 package com.aktarjabed.nextgenkeyboard.feature.autocorrect
+import com.aktarjabed.nextgenkeyboard.state.CorrectionType
 
 import android.content.Context
 import androidx.collection.LruCache
