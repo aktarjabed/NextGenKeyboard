@@ -14,7 +14,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.nextgen.keyboard"
+        applicationId = "com.aktarjabed.nexgenkeyboard"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
