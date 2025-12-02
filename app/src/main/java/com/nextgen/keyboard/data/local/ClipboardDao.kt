@@ -1,7 +1,7 @@
 package com.nextgen.keyboard.data.local
 
 import androidx.room.*
-import com.nextgen.keyboard.data.model.ClipboardEntity
+import com.nextgen.keyboard.data.models.ClipboardEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao

@@ -3,7 +3,7 @@ package com.nextgen.keyboard.feature.autocorrect
 import android.content.Context
 import android.content.res.Resources
 import com.google.common.truth.Truth.assertThat
-import com.nextgen.keyboard.data.model.Language
+import com.nextgen.keyboard.data.models.Language
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic

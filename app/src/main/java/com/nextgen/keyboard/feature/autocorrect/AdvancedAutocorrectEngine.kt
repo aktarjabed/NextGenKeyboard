@@ -3,7 +3,7 @@ package com.nextgen.keyboard.feature.autocorrect
 import android.content.Context
 import androidx.collection.LruCache
 import com.nextgen.keyboard.R
-import com.nextgen.keyboard.data.model.Language
+import com.nextgen.keyboard.data.models.Language
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

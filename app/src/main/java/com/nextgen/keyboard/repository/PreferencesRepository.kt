@@ -1,4 +1,4 @@
-package com.nextgen.keyboard.data.repository
+package com.nextgen.keyboard.repository
 
 import android.content.Context
 import androidx.datastore.core.DataStore

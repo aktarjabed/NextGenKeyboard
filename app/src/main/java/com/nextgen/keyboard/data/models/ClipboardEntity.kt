@@ -1,4 +1,4 @@
-package com.nextgen.keyboard.data.model
+package com.nextgen.keyboard.data.models
 
 import android.os.Parcelable
 import androidx.room.ColumnInfo
@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
-@Entity(tableName = "clips") // Corrected table name
+@Entity(tableName = "clips")
 data class ClipboardEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
@@ -18,13 +18,12 @@ data class ClipboardEntity(
     @ColumnInfo(name = "timestamp")
     val timestamp: Long = System.currentTimeMillis(),
 
-    // Corrected property name to match original 'Clip' entity and avoid migration issues
     @ColumnInfo(name = "isPinned")
     val isPinned: Boolean = false,
 
     @ColumnInfo(name = "is_encrypted", defaultValue = "0")
-    val isEncrypted: Boolean = false, // v2
+    val isEncrypted: Boolean = false,
 
     @ColumnInfo(name = "category", defaultValue = "general")
-    val category: String = "general" // v3
+    val category: String = "general"
 ) : Parcelable

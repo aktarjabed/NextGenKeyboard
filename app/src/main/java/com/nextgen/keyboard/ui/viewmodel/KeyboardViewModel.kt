@@ -2,13 +2,13 @@ package com.nextgen.keyboard.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nextgen.keyboard.data.model.LanguagesPro
-import com.nextgen.keyboard.data.repository.PreferencesRepository
+import com.nextgen.keyboard.data.models.LanguagesPro
+import com.nextgen.keyboard.repository.PreferencesRepository
 import com.giphy.sdk.core.models.Media
 import com.nextgen.keyboard.feature.autocorrect.AdvancedAutocorrectEngine
 import com.nextgen.keyboard.feature.autocorrect.AdvancedSuggestion
 import com.nextgen.keyboard.feature.autocorrect.WordContext
-import com.nextgen.keyboard.feature.gif.GiphyManager
+import com.nextgen.keyboard.managers.GiphyManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

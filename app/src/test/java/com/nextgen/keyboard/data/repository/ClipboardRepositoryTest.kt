@@ -1,7 +1,7 @@
 package com.nextgen.keyboard.data.repository
 
 import com.nextgen.keyboard.data.local.ClipboardDao
-import com.nextgen.keyboard.data.model.ClipboardEntity
+import com.nextgen.keyboard.data.models.ClipboardEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking

@@ -1,15 +1,13 @@
-package com.nextgen.keyboard.data.repository
+package com.nextgen.keyboard.repository
 
 import com.nextgen.keyboard.data.local.ClipboardDao
-import com.nextgen.keyboard.data.model.ClipboardEntity
+import com.nextgen.keyboard.data.models.ClipboardEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import java.util.UUID
 
 @Singleton
 class ClipboardRepository @Inject constructor(

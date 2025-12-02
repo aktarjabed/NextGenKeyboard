@@ -8,7 +8,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration as WorkConfiguration
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
-import com.nextgen.keyboard.data.repository.PreferencesRepository
+import com.nextgen.keyboard.repository.PreferencesRepository
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

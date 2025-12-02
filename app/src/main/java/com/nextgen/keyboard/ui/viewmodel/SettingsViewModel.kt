@@ -2,8 +2,8 @@ package com.nextgen.keyboard.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nextgen.keyboard.data.repository.ClipboardRepository
-import com.nextgen.keyboard.data.repository.PreferencesRepository
+import com.nextgen.keyboard.repository.ClipboardRepository
+import com.nextgen.keyboard.repository.PreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

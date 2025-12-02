@@ -6,7 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.nextgen.keyboard.data.model.ClipboardEntity
+import com.nextgen.keyboard.data.models.ClipboardEntity
 
 @Database(
     entities = [ClipboardEntity::class],

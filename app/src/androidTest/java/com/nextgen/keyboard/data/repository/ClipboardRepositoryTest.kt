@@ -3,7 +3,7 @@ package com.nextgen.keyboard.data.repository
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import com.nextgen.keyboard.data.local.ClipboardDatabase
-import com.nextgen.keyboard.data.model.ClipboardEntity
+import com.nextgen.keyboard.data.models.ClipboardEntity
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import kotlinx.coroutines.flow.first

@@ -25,7 +25,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.unit.dp
-import com.nextgen.keyboard.data.model.Language
+import com.nextgen.keyboard.data.models.Language
 
 @Composable
 fun MainKeyboardView(
