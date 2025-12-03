@@ -10,6 +10,9 @@ import com.google.common.truth.Truth.assertThat
 import com.aktarjabed.nextgenkeyboard.data.models.KeyData
 import com.aktarjabed.nextgenkeyboard.data.models.Language
 import com.aktarjabed.nextgenkeyboard.data.models.Layout
+import com.aktarjabed.nextgenkeyboard.data.model.KeyData
+import com.aktarjabed.nextgenkeyboard.data.model.Language
+import com.aktarjabed.nextgenkeyboard.data.model.Layout
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

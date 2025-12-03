@@ -9,6 +9,7 @@ import androidx.work.Configuration as WorkConfiguration
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.aktarjabed.nextgenkeyboard.repository.PreferencesRepository
+import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -74,4 +75,5 @@ class NextGenKeyboardApp : Application(), WorkConfiguration.Provider {
 
     // Fix for Configuration.Provider interface
     // ... (if needed by interface)
+}
 }

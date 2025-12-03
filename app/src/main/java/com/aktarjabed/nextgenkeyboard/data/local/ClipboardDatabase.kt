@@ -11,6 +11,11 @@ import com.aktarjabed.nextgenkeyboard.data.models.ClipboardEntity
 @Database(
     entities = [ClipboardEntity::class],
     version = 3, // Version updated to include both migrations
+import com.aktarjabed.nextgenkeyboard.data.model.Clip
+
+@Database(
+    entities = [Clip::class],
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -23,11 +28,17 @@ abstract class ClipboardDatabase : RoomDatabase() {
         const val DATABASE_NAME = "clipboard_database"
 
         // Migration from v1 to v2: Adds the 'is_encrypted' column
+    abstract fun clipDao(): ClipDao
+
+    companion object {
+        const val DATABASE_NAME = "nextgen_keyboard_db"
+
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 try {
                     database.execSQL("ALTER TABLE clips ADD COLUMN is_encrypted INTEGER NOT NULL DEFAULT 0")
                     Log.d("ClipboardDB", "Migration 1->2 completed successfully: Added 'is_encrypted' column.")
+                    Log.d("ClipboardDB", "Migration 1->2 completed successfully.")
                 } catch (e: Exception) {
                     Log.e("ClipboardDB", "Migration 1->2 failed", e)
                     throw e
@@ -41,6 +52,11 @@ abstract class ClipboardDatabase : RoomDatabase() {
                 try {
                     database.execSQL("ALTER TABLE clips ADD COLUMN category TEXT DEFAULT 'general' NOT NULL")
                     Log.d("ClipboardDB", "Migration 2->3 completed successfully: Added 'category' column.")
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try {
+                    database.execSQL("ALTER TABLE clips ADD COLUMN category TEXT NOT NULL DEFAULT 'general'")
+                    Log.d("ClipboardDB", "Migration 2->3 completed successfully.")
                 } catch (e: Exception) {
                     Log.e("ClipboardDB", "Migration 2->3 failed", e)
                     throw e
@@ -48,4 +64,5 @@ abstract class ClipboardDatabase : RoomDatabase() {
             }
         }
     }
+}
 }

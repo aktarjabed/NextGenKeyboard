@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.unit.dp
 import com.aktarjabed.nextgenkeyboard.data.models.Language
+import androidx.compose.ui.unit.dp
+import com.aktarjabed.nextgenkeyboard.data.model.Language
 
 @Composable
 fun MainKeyboardView(
@@ -45,6 +47,11 @@ fun MainKeyboardView(
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+    ) {
         // Top action bar
         Row(
             modifier = Modifier
@@ -97,6 +104,23 @@ fun MainKeyboardView(
                                 onClick = onKeyClick
                             )
                         }
+        // Main keyboard layout
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            language.layout.rows.forEach { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
+                ) {
+                    row.forEach { keyData ->
+                        Key(
+                            char = keyData.display,
+                            onClick = onKeyClick
+                        )
                     }
                 }
             }

@@ -4,6 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import com.aktarjabed.nextgenkeyboard.data.local.ClipboardDatabase
 import com.aktarjabed.nextgenkeyboard.data.models.ClipboardEntity
+import com.aktarjabed.nextgenkeyboard.data.model.Clip
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import kotlinx.coroutines.flow.first
@@ -29,6 +30,9 @@ class ClipboardRepositoryTest {
 
     // Inject the database itself to allow for cleanup.
     @Inject
+    lateinit var repository: ClipboardRepository
+
+    @Inject
     lateinit var db: ClipboardDatabase
 
     @Before
@@ -53,6 +57,11 @@ class ClipboardRepositoryTest {
         val allClips = repository.getRecentClips().first()
 
         // Assert
+        val result = repository.saveClip(content)
+        val allClips = repository.getRecentClips().first()
+
+        // Assert
+        assertThat(result.isSuccess).isTrue()
         assertThat(allClips).isNotEmpty()
         assertThat(allClips[0].content).isEqualTo(content)
     }
@@ -68,6 +77,16 @@ class ClipboardRepositoryTest {
     }
 
     @Test
+    fun saveClip_withSensitiveContent_fails() = runBlocking {
+        // Act
+        val result = repository.saveClip("123456") // OTP
+
+        // Assert
+        assertThat(result.isFailure).isTrue()
+        assertThat(result.exceptionOrNull()).isInstanceOf(SecurityException::class.java)
+    }
+
+    @Test
     fun deleteClip_removesFromDatabase() = runBlocking {
         // Given
         repository.saveClip("to be deleted")
@@ -78,6 +97,11 @@ class ClipboardRepositoryTest {
         val clips = repository.getRecentClips().first()
 
         // Then
+        val result = repository.deleteClip(clipToDelete)
+        val clips = repository.getRecentClips().first()
+
+        // Then
+        assertThat(result.isSuccess).isTrue()
         assertThat(clips).isEmpty()
     }
 
@@ -92,6 +116,10 @@ class ClipboardRepositoryTest {
         repository.updateClip(pinnedClip)
 
         // Then
+        val result = repository.updateClip(pinnedClip)
+
+        // Then
+        assertThat(result.isSuccess).isTrue()
         val pinnedClips = repository.getPinnedClips().first()
         val recentClips = repository.getRecentClips().first()
         assertThat(pinnedClips).hasSize(1)

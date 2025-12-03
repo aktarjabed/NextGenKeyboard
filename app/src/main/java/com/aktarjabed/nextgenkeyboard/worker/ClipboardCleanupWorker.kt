@@ -5,6 +5,7 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.aktarjabed.nextgenkeyboard.repository.ClipboardRepository
+import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import timber.log.Timber

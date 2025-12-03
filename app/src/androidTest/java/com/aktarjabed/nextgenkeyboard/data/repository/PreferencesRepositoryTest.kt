@@ -21,6 +21,30 @@ class PreferencesRepositoryTest {
 
     private lateinit var context: Context
     private lateinit var repository: PreferencesRepository
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import javax.inject.Inject
+
+private val Context.testDataStore: DataStore<Preferences> by preferencesDataStore(name = "keyboard_preferences")
+
+@HiltAndroidTest
+@RunWith(AndroidJUnit4::class)
+class PreferencesRepositoryTest {
+
+    @get:Rule
+    var hiltRule = HiltAndroidRule(this)
+
+    @Inject
+    lateinit var repository: PreferencesRepository
+
+    private lateinit var context: Context
 
     @Before
     fun setup() {
@@ -29,6 +53,7 @@ class PreferencesRepositoryTest {
         repository = PreferencesRepository(context)
 
         // Clear preferences before each test to ensure isolation
+        hiltRule.inject()
         runBlocking {
             context.testDataStore.edit { it.clear() }
         }
@@ -44,6 +69,16 @@ class PreferencesRepositoryTest {
         val retrievedValue = repository.isDarkMode.first()
 
         // Assert
+    @After
+    fun tearDown() = runBlocking {
+        context.testDataStore.edit { it.clear() }
+    }
+
+    @Test
+    fun setDarkMode_retrievesCorrectly() = runBlocking {
+        val isDark = true
+        repository.setDarkMode(isDark)
+        val retrievedValue = repository.isDarkMode.first()
         assertThat(retrievedValue).isEqualTo(isDark)
     }
 
@@ -59,6 +94,10 @@ class PreferencesRepositoryTest {
         // Assert
         assertThat(newState).isNotEqualTo(initialState)
         assertThat(newState).isFalse()
+        val initialState = repository.isClipboardEnabled.first()
+        repository.setClipboardEnabled(!initialState)
+        val newState = repository.isClipboardEnabled.first()
+        assertThat(newState).isNotEqualTo(initialState)
     }
 
     @Test
@@ -71,6 +110,9 @@ class PreferencesRepositoryTest {
         val retrieved = repository.autoDeleteDays.first()
 
         // Assert
+        val retentionDays = 90
+        repository.setAutoDeleteDays(retentionDays)
+        val retrieved = repository.autoDeleteDays.first()
         assertThat(retrieved).isEqualTo(retentionDays)
     }
 
@@ -85,6 +127,14 @@ class PreferencesRepositoryTest {
         repository.setAutoDeleteDays(400)
         retrieved = repository.autoDeleteDays.first()
         assertThat(retrieved).isEqualTo(365)
+    fun setMaxClipboardItems_coercesValue() = runBlocking {
+        repository.setMaxClipboardItems(10)
+        var retrieved = repository.maxClipboardItems.first()
+        assertThat(retrieved).isEqualTo(50)
+
+        repository.setMaxClipboardItems(6000)
+        retrieved = repository.maxClipboardItems.first()
+        assertThat(retrieved).isEqualTo(2000)
     }
 
     @Test
@@ -97,6 +147,9 @@ class PreferencesRepositoryTest {
         val retrieved = repository.currentLanguage.first()
 
         // Assert
+        val language = "fr_FR"
+        repository.setCurrentLanguage(language)
+        val retrieved = repository.currentLanguage.first()
         assertThat(retrieved).isEqualTo(language)
     }
 }

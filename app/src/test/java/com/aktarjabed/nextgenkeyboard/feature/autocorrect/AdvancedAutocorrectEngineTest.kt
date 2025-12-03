@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.Resources
 import com.google.common.truth.Truth.assertThat
 import com.aktarjabed.nextgenkeyboard.data.models.Language
+import com.aktarjabed.nextgenkeyboard.data.model.Language
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic

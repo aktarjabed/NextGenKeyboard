@@ -3,8 +3,8 @@ package com.aktarjabed.nextgenkeyboard.feature.backup
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
-import com.aktarjabed.nextgenkeyboard.data.models.LanguagesPro
-import com.aktarjabed.nextgenkeyboard.repository.PreferencesRepository
+import com.aktarjabed.nextgenkeyboard.data.model.LanguagesPro
+import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable

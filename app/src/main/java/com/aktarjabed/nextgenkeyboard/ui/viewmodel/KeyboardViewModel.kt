@@ -4,11 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aktarjabed.nextgenkeyboard.data.models.LanguagesPro
 import com.aktarjabed.nextgenkeyboard.repository.PreferencesRepository
+import com.aktarjabed.nextgenkeyboard.data.model.LanguagesPro
+import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import com.giphy.sdk.core.models.Media
 import com.aktarjabed.nextgenkeyboard.feature.autocorrect.AdvancedAutocorrectEngine
 import com.aktarjabed.nextgenkeyboard.feature.autocorrect.AdvancedSuggestion
 import com.aktarjabed.nextgenkeyboard.feature.autocorrect.WordContext
 import com.aktarjabed.nextgenkeyboard.managers.GiphyManager
+import com.aktarjabed.nextgenkeyboard.feature.gif.GiphyManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,6 +58,16 @@ class KeyboardViewModel @Inject constructor(
 
     // Synchronous check for the Service to avoid blocking
     fun isAutocorrectEnabled(): Boolean = _isAutocorrectEnabled
+
+        viewModelScope.launch {
+            preferencesRepository.giphyApiKey.collect { apiKey ->
+                giphyManager.initialize(apiKey)
+                if (apiKey.isNotBlank()) {
+                    fetchTrendingGifs()
+                }
+            }
+        }
+    }
 
     fun onTextUpdated(text: String) {
         viewModelScope.launch {

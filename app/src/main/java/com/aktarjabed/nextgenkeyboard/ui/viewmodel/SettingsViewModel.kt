@@ -5,6 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.aktarjabed.nextgenkeyboard.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.repository.PreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
+import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import timber.log.Timber
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +38,9 @@ class SettingsViewModel @Inject constructor(
     val autoDeleteDays: StateFlow<Int> = preferencesRepository.autoDeleteDays
     val maxClipboardItems: StateFlow<Int> = preferencesRepository.maxClipboardItems
     val isCrashReportingEnabled: StateFlow<Boolean> = preferencesRepository.isCrashReportingEnabled
+
+    // ✅ NEW: Giphy API Key
+    val giphyApiKey: StateFlow<String> = preferencesRepository.giphyApiKey
 
     // ✅ NEW: UI state for operations
     private val _cleanupInProgress = MutableStateFlow(false)
@@ -83,6 +93,13 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun clearClipboardHistory() {
+        viewModelScope.launch {
+            try {
+                clipboardRepository.clearAllClips()
+                Timber.d("✅ Clipboard history cleared")
+            } catch (e: Exception) {
+                Timber.e(e, "Error clearing clipboard")
     // ✅ NEW: Privacy setters
     fun setClipboardEnabled(enabled: Boolean) {
         viewModelScope.launch {
@@ -176,5 +193,16 @@ class SettingsViewModel @Inject constructor(
 
     fun clearCleanupResult() {
         _cleanupResult.value = null
+    }
+
+    fun setGiphyApiKey(apiKey: String) {
+        viewModelScope.launch {
+            try {
+                preferencesRepository.setGiphyApiKey(apiKey)
+                Timber.d("✅ Giphy API key updated")
+            } catch (e: Exception) {
+                Timber.e(e, "Error setting Giphy API key")
+            }
+        }
     }
 }
