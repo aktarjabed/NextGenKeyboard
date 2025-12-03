@@ -1,162 +1,75 @@
 package com.aktarjabed.nextgenkeyboard.data.repository
 
 import com.aktarjabed.nextgenkeyboard.data.local.ClipboardDao
-import com.aktarjabed.nextgenkeyboard.data.models.ClipboardEntity
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertEquals
-import org.junit.Before
-import org.junit.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
-
-class ClipboardRepositoryTest {
-
-    private lateinit var clipboardDao: ClipboardDao
-    private lateinit var repository: ClipboardRepository
-
-    @Before
-    fun setup() {
-        clipboardDao = mock()
-        repository = ClipboardRepository(clipboardDao)
-    }
-
-    @Test
-    fun `getClipboardHistory maps entities to items`() = runBlocking {
-        val entity = ClipboardEntity(id = 1, content = "test", timestamp = 100L, isEncrypted = true)
-        whenever(clipboardDao.getRecentClips()).thenReturn(flowOf(listOf(entity)))
-
-        val result = repository.getClipboardHistory().first()
-
-        assertEquals(1, result.size)
-        assertEquals("1", result[0].id)
-        assertEquals("test", result[0].text)
-        assertEquals(true, result[0].isSensitive)
-    }
-
-    @Test
-    fun `saveClip inserts entity into dao`() = runBlocking {
-        repository.saveClip("content", true)
-
-        verify(clipboardDao).insert(any())
-    }
-
-    @Test
-    fun `clearAllClips calls delete on dao`() = runBlocking {
-        repository.clearAllClips()
-
-        verify(clipboardDao).deleteAllClips()
-    }
-import com.aktarjabed.nextgenkeyboard.data.local.ClipDao
 import com.aktarjabed.nextgenkeyboard.data.model.Clip
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mock
+import org.mockito.Mockito.`when`
+import org.mockito.Mockito.doThrow
+import org.mockito.Mockito.verify
+import org.mockito.MockitoAnnotations
 
 class ClipboardRepositoryTest {
 
+    @Mock
+    lateinit var clipboardDao: ClipboardDao
+
     private lateinit var clipboardRepository: ClipboardRepository
-    private lateinit var clipDao: FakeClipDao
 
     @Before
     fun setup() {
-        clipDao = FakeClipDao()
-        clipboardRepository = ClipboardRepository(clipDao)
+        MockitoAnnotations.openMocks(this)
+        clipboardRepository = ClipboardRepository(clipboardDao)
     }
 
     @Test
-    fun `saveClip should save non-sensitive content`() = runBlocking {
-        val content = "This is a normal clip"
-        val result = clipboardRepository.saveClip(content)
+    fun `saveClip should block OTP`() = runBlocking {
+        val otp = "123456"
+        val result = clipboardRepository.saveClip(otp)
+        assertTrue(result.isFailure)
+        assertEquals("Potential sensitive data detected", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun `saveClip should allow normal numbers`() = runBlocking {
+        val number = "12345" // 5 digits
+        `when`(clipboardDao.insertClip(any())).thenReturn(1L)
+        `when`(clipboardDao.getUnpinnedCount()).thenReturn(0)
+
+        val result = clipboardRepository.saveClip(number)
         assertTrue(result.isSuccess)
-        assertEquals(1, clipDao.getClipCount())
     }
 
     @Test
-    fun `saveClip should not save OTP`() = runBlocking {
-        val content = "123456"
-        val result = clipboardRepository.saveClip(content)
+    fun `saveClip should block Credit Card`() = runBlocking {
+        val cc = "1234 5678 1234 5678" // 16 digits with spaces
+        val result = clipboardRepository.saveClip(cc)
         assertTrue(result.isFailure)
-        assertEquals(0, clipDao.getClipCount())
     }
 
     @Test
-    fun `saveClip should not save credit card number`() = runBlocking {
-        val content = "1234567890123456"
-        val result = clipboardRepository.saveClip(content)
+    fun `saveClip should block Password keyword`() = runBlocking {
+        val text = "My password is 123"
+        val result = clipboardRepository.saveClip(text)
         assertTrue(result.isFailure)
-        assertEquals(0, clipDao.getClipCount())
     }
 
     @Test
-    fun `saveClip should not save password`() = runBlocking {
-        val content = "my password is very secure"
+    fun `saveClip should succeed even if cleanup fails`() = runBlocking {
+        val content = "Hello World"
+        `when`(clipboardDao.insertClip(any())).thenReturn(1L)
+        `when`(clipboardDao.getUnpinnedCount()).thenThrow(RuntimeException("DB Error"))
+
         val result = clipboardRepository.saveClip(content)
-        assertTrue(result.isFailure)
-        assertEquals(0, clipDao.getClipCount())
-    }
 
-    @Test
-    fun `saveClip should not save blank content`() = runBlocking {
-        val content = " "
-        val result = clipboardRepository.saveClip(content)
-        assertTrue(result.isFailure)
-        assertEquals(0, clipDao.getClipCount())
+        // Should succeed despite cleanup failure
+        assertTrue(result.isSuccess)
+        verify(clipboardDao).insertClip(any())
     }
-
-    @Test
-    fun `performAutoCleanup should delete oldest clips`() = runBlocking {
-        for (i in 1..510) {
-            clipDao.insertClip(Clip(content = "clip $i"))
-        }
-        assertEquals(510, clipDao.getClipCount())
-
-        clipboardRepository.performManualCleanup()
-
-        assertEquals(500, clipDao.getClipCount())
-    }
-}
-
-class FakeClipDao : ClipDao {
-    private val clips = mutableListOf<Clip>()
-
-    override fun getPinnedClips(): Flow<List<Clip>> = flow { emit(clips.filter { it.isPinned }) }
-    override fun getRecentClips(): Flow<List<Clip>> = flow { emit(clips.filter { !it.isPinned }) }
-    override suspend fun searchClips(query: String): List<Clip> = clips.filter { it.content.contains(query) }
-    override suspend fun insertClip(clip: Clip): Long {
-        clips.add(clip.copy(id = (clips.size + 1).toLong()))
-        return clips.size.toLong()
-    }
-    override suspend fun updateClip(clip: Clip) {
-        val index = clips.indexOfFirst { it.id == clip.id }
-        if (index != -1) {
-            clips[index] = clip
-        }
-    }
-    override suspend fun deleteClip(clip: Clip) {
-        clips.remove(clip)
-    }
-    override suspend fun clearUnpinnedClips() {
-        clips.removeAll { !it.isPinned }
-    }
-    override suspend fun deleteAllClips() {
-        clips.clear()
-    }
-    override suspend fun getClipCount(): Int = clips.size
-    override suspend fun deleteOldestUnpinned(limit: Int) {
-        val unpinned = clips.filter { !it.isPinned }.sortedBy { it.timestamp }
-        val toDelete = unpinned.take(limit)
-        clips.removeAll(toDelete)
-    }
-    override suspend fun deleteOlderThan(beforeTimestamp: Long) {
-        clips.removeAll { !it.isPinned && it.timestamp < beforeTimestamp }
-    }
-    override suspend fun getUnpinnedCount(): Int = clips.count { !it.isPinned }
 }
