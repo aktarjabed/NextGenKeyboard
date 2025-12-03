@@ -2,6 +2,9 @@ package com.aktarjabed.nextgenkeyboard.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.sqlite.db.SupportSQLiteDatabase
+import com.aktarjabed.nextgenkeyboard.BuildConfig
+import com.aktarjabed.nextgenkeyboard.data.local.ClipboardDao
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.aktarjabed.nextgenkeyboard.BuildConfig
@@ -24,11 +27,14 @@ object DatabaseModule {
     fun provideClipboardDatabase(
         @ApplicationContext context: Context
     ): ClipboardDatabase {
+        val builder = Room.databaseBuilder(
         return Room.databaseBuilder(
             context,
             ClipboardDatabase::class.java,
             ClipboardDatabase.DATABASE_NAME
         )
+            .addMigrations(ClipboardDatabase.MIGRATION_1_2, ClipboardDatabase.MIGRATION_2_3)
+            .addCallback(object : androidx.room.RoomDatabase.Callback() {
             .fallbackToDestructiveMigration()
             // Add the migrations from the ClipboardDatabase companion object
             .addMigrations(ClipboardDatabase.MIGRATION_1_2, ClipboardDatabase.MIGRATION_2_3)
@@ -58,6 +64,8 @@ object DatabaseModule {
 
     @Provides
     @Singleton
+    fun provideClipboardDao(database: ClipboardDatabase): ClipboardDao {
+        return database.clipboardDao()
     fun provideClipDao(database: ClipboardDatabase): ClipDao {
         return database.clipDao()
     }

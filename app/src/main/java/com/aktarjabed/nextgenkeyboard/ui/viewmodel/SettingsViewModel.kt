@@ -2,6 +2,9 @@ package com.aktarjabed.nextgenkeyboard.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aktarjabed.nextgenkeyboard.repository.ClipboardRepository
+import com.aktarjabed.nextgenkeyboard.repository.PreferencesRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel

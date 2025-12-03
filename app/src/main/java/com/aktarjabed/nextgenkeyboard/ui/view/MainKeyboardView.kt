@@ -21,6 +21,11 @@ import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.unit.dp
+import com.aktarjabed.nextgenkeyboard.data.models.Language
 import androidx.compose.ui.unit.dp
 import com.aktarjabed.nextgenkeyboard.data.model.Language
 
@@ -34,6 +39,14 @@ fun MainKeyboardView(
     onGifKeyboardClick: () -> Unit,
     onSettingsClick: () -> Unit,
 ) {
+    val layoutDirection = if (language.isRTL) LayoutDirection.Rtl else LayoutDirection.Ltr
+
+    CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -73,6 +86,24 @@ fun MainKeyboardView(
             }
         }
 
+            // Main keyboard layout
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                language.layout.rows.forEach { keyRow ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
+                    ) {
+                        keyRow.keys.forEach { keyData ->
+                            Key(
+                                char = keyData.display,
+                                onClick = onKeyClick
+                            )
+                        }
         // Main keyboard layout
         Column(
             modifier = Modifier

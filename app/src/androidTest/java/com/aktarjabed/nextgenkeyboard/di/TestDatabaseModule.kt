@@ -2,6 +2,7 @@ package com.aktarjabed.nextgenkeyboard.di
 
 import android.content.Context
 import androidx.room.Room
+import com.aktarjabed.nextgenkeyboard.data.local.ClipboardDao
 import com.aktarjabed.nextgenkeyboard.data.local.ClipDao
 import com.aktarjabed.nextgenkeyboard.data.local.ClipboardDatabase
 import dagger.Module
@@ -32,6 +33,8 @@ object TestDatabaseModule {
 
     @Provides
     @Singleton
+    fun provideTestDao(db: ClipboardDatabase): ClipboardDao {
+        return db.clipboardDao()
     fun provideTestDao(db: ClipboardDatabase): ClipDao {
         return db.clipDao()
     }

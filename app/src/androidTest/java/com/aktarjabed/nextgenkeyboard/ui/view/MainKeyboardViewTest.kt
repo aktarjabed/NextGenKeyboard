@@ -7,6 +7,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import com.aktarjabed.nextgenkeyboard.data.models.KeyData
+import com.aktarjabed.nextgenkeyboard.data.models.Language
+import com.aktarjabed.nextgenkeyboard.data.models.Layout
 import com.aktarjabed.nextgenkeyboard.data.model.KeyData
 import com.aktarjabed.nextgenkeyboard.data.model.Language
 import com.aktarjabed.nextgenkeyboard.data.model.Layout

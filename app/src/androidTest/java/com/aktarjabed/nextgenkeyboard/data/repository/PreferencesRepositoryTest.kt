@@ -8,6 +8,19 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+
+private val Context.testDataStore: DataStore<Preferences> by preferencesDataStore(name = "test_keyboard_preferences")
+
+@RunWith(AndroidJUnit4::class)
+class PreferencesRepositoryTest {
+
+    private lateinit var context: Context
+    private lateinit var repository: PreferencesRepository
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import kotlinx.coroutines.flow.first
@@ -36,12 +49,26 @@ class PreferencesRepositoryTest {
     @Before
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
+        // Manually create the repository to control the DataStore instance for testing
+        repository = PreferencesRepository(context)
+
+        // Clear preferences before each test to ensure isolation
         hiltRule.inject()
         runBlocking {
             context.testDataStore.edit { it.clear() }
         }
     }
 
+    @Test
+    fun setDarkMode_retrievesCorrectly() = runBlocking {
+        // Arrange
+        val isDark = false
+
+        // Act
+        repository.setDarkMode(isDark)
+        val retrievedValue = repository.isDarkMode.first()
+
+        // Assert
     @After
     fun tearDown() = runBlocking {
         context.testDataStore.edit { it.clear() }
@@ -57,6 +84,16 @@ class PreferencesRepositoryTest {
 
     @Test
     fun setClipboardEnabled_updatesState() = runBlocking {
+        // Arrange
+        val initialState = repository.isClipboardEnabled.first() // Default is true
+
+        // Act
+        repository.setClipboardEnabled(!initialState)
+        val newState = repository.isClipboardEnabled.first()
+
+        // Assert
+        assertThat(newState).isNotEqualTo(initialState)
+        assertThat(newState).isFalse()
         val initialState = repository.isClipboardEnabled.first()
         repository.setClipboardEnabled(!initialState)
         val newState = repository.isClipboardEnabled.first()
@@ -65,6 +102,14 @@ class PreferencesRepositoryTest {
 
     @Test
     fun setAutoDeleteDays_savesCorrectValue() = runBlocking {
+        // Arrange
+        val retentionDays = 60
+
+        // Act
+        repository.setAutoDeleteDays(retentionDays)
+        val retrieved = repository.autoDeleteDays.first()
+
+        // Assert
         val retentionDays = 90
         repository.setAutoDeleteDays(retentionDays)
         val retrieved = repository.autoDeleteDays.first()
@@ -72,6 +117,16 @@ class PreferencesRepositoryTest {
     }
 
     @Test
+    fun setAutoDeleteDays_coercesValue() = runBlocking {
+        // Test lower bound
+        repository.setAutoDeleteDays(0)
+        var retrieved = repository.autoDeleteDays.first()
+        assertThat(retrieved).isEqualTo(1)
+
+        // Test upper bound
+        repository.setAutoDeleteDays(400)
+        retrieved = repository.autoDeleteDays.first()
+        assertThat(retrieved).isEqualTo(365)
     fun setMaxClipboardItems_coercesValue() = runBlocking {
         repository.setMaxClipboardItems(10)
         var retrieved = repository.maxClipboardItems.first()
@@ -84,6 +139,14 @@ class PreferencesRepositoryTest {
 
     @Test
     fun setCurrentLanguage_retrievesCorrectly() = runBlocking {
+        // Arrange
+        val language = "fr_FR"
+
+        // Act
+        repository.setCurrentLanguage(language)
+        val retrieved = repository.currentLanguage.first()
+
+        // Assert
         val language = "fr_FR"
         repository.setCurrentLanguage(language)
         val retrieved = repository.currentLanguage.first()

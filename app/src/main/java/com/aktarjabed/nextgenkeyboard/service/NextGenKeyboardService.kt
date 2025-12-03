@@ -22,6 +22,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
 import com.aktarjabed.nextgenkeyboard.BuildConfig
+import com.aktarjabed.nextgenkeyboard.repository.PreferencesRepository
+import com.aktarjabed.nextgenkeyboard.feature.autocorrect.AdvancedAutocorrectEngine
+import com.aktarjabed.nextgenkeyboard.managers.GiphyManager
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import com.aktarjabed.nextgenkeyboard.feature.autocorrect.AdvancedAutocorrectEngine
 import com.aktarjabed.nextgenkeyboard.feature.gif.GiphyManager
@@ -626,6 +629,23 @@ class NextGenKeyboardService : InputMethodService() {
     }
 
     private fun handleKeyPress(text: String) {
+        if (text.isBlank()) return
+
+        // Handle special keys
+        when (text) {
+            "⌫" -> {
+                handleBackspace()
+                return
+            }
+            "↵" -> {
+                handleEnter()
+                return
+            }
+            "SPACE" -> {
+                commitText(" ")
+                return
+            }
+        }
         try {
             if (text.isBlank()) {
                 logWarning("Attempted to commit empty text.")
@@ -650,6 +670,23 @@ class NextGenKeyboardService : InputMethodService() {
                 // Fallback to original text
                 commitText(text)
             }
+        }
+    }
+
+    private fun handleBackspace() {
+        try {
+            currentInputConnection?.deleteSurroundingText(1, 0)
+        } catch (e: Exception) {
+            logError("Error handling backspace", e)
+        }
+    }
+
+    private fun handleEnter() {
+        try {
+            currentInputConnection?.sendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER))
+            currentInputConnection?.sendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER))
+        } catch (e: Exception) {
+            logError("Error handling enter", e)
         }
     }
 

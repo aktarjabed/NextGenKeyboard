@@ -1,10 +1,14 @@
 package com.aktarjabed.nextgenkeyboard
 
 import android.app.Application
+import android.content.Context
+import android.content.res.Configuration
+import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration as WorkConfiguration
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.aktarjabed.nextgenkeyboard.repository.PreferencesRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -43,6 +47,8 @@ class NextGenKeyboardApp : Application(), WorkConfiguration.Provider {
             FirebaseApp.initializeApp(this)
 
             // Check privacy preference for Crashlytics
+            // Note: In a real app, we should observe this or handle it more robustly.
+            // For now, we launch a coroutine to check the preference.
             // Default behavior until pref is read: DISABLED (Privacy by default)
             FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(false)
 
@@ -66,4 +72,8 @@ class NextGenKeyboardApp : Application(), WorkConfiguration.Provider {
             .setWorkerFactory(workerFactory)
             .setMinimumLoggingLevel(if (BuildConfig.DEBUG) android.util.Log.DEBUG else android.util.Log.ERROR)
             .build()
+
+    // Fix for Configuration.Provider interface
+    // ... (if needed by interface)
+}
 }

@@ -1,8 +1,10 @@
 package com.aktarjabed.nextgenkeyboard.feature.autocorrect
+import com.aktarjabed.nextgenkeyboard.state.CorrectionType
 
 import android.content.Context
 import androidx.collection.LruCache
 import com.aktarjabed.nextgenkeyboard.R
+import com.aktarjabed.nextgenkeyboard.data.models.Language
 import com.aktarjabed.nextgenkeyboard.data.model.Language
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope

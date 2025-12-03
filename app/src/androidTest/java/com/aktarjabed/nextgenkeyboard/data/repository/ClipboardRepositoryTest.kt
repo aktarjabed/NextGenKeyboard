@@ -3,6 +3,7 @@ package com.aktarjabed.nextgenkeyboard.data.repository
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import com.aktarjabed.nextgenkeyboard.data.local.ClipboardDatabase
+import com.aktarjabed.nextgenkeyboard.data.models.ClipboardEntity
 import com.aktarjabed.nextgenkeyboard.data.model.Clip
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -23,6 +24,11 @@ class ClipboardRepositoryTest {
     @get:Rule
     var hiltRule = HiltAndroidRule(this)
 
+    // Inject the repository to be tested. Hilt will provide it with the in-memory database.
+    @Inject
+    lateinit var repository: ClipboardRepository
+
+    // Inject the database itself to allow for cleanup.
     @Inject
     lateinit var repository: ClipboardRepository
 
@@ -47,6 +53,10 @@ class ClipboardRepositoryTest {
         val content = "test clip"
 
         // Act
+        repository.saveClip(content)
+        val allClips = repository.getRecentClips().first()
+
+        // Assert
         val result = repository.saveClip(content)
         val allClips = repository.getRecentClips().first()
 
@@ -83,6 +93,10 @@ class ClipboardRepositoryTest {
         val clipToDelete = repository.getRecentClips().first().first()
 
         // When
+        repository.deleteClip(clipToDelete)
+        val clips = repository.getRecentClips().first()
+
+        // Then
         val result = repository.deleteClip(clipToDelete)
         val clips = repository.getRecentClips().first()
 
@@ -99,6 +113,9 @@ class ClipboardRepositoryTest {
 
         // When
         val pinnedClip = clipToPin.copy(isPinned = true)
+        repository.updateClip(pinnedClip)
+
+        // Then
         val result = repository.updateClip(pinnedClip)
 
         // Then
