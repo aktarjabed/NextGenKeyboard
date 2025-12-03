@@ -17,6 +17,12 @@ android {
         applicationId = "com.aktarjabed.nextgenkeyboard"
         minSdk = 30          // ✅ UPDATED: 26 → 30 (Android 11+)
         targetSdk = 36       // ✅ UPDATED: 34 → 36 (matches compileSdk)
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "com.aktarjabed.nextgenkeyboard"
+        minSdk = 30
+        targetSdk = 36
         versionCode = 2
         versionName = "1.0.0"
 
