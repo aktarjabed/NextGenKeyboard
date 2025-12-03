@@ -4,13 +4,7 @@ import com.nextgen.keyboard.data.local.ClipDao
 import com.nextgen.keyboard.data.model.Clip
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
-import android.content.Context
-import androidx.room.*
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
-import timber.log.Timber
-import java.util.*
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -43,26 +37,23 @@ class ClipboardRepository @Inject constructor(
                 return Result.failure(IllegalArgumentException("Clip content cannot be blank"))
             }
 
+            // Sensitive data checks based on test requirements
+            if (content.length == 6 && content.all { it.isDigit() }) {
+                 return Result.failure(IllegalArgumentException("Potential OTP detected"))
+            }
+            // Simple credit card check (13-19 digits)
+            if (content.length in 13..19 && content.all { it.isDigit() }) {
+                 return Result.failure(IllegalArgumentException("Potential Credit Card detected"))
+            }
+            if (content.lowercase().contains("password")) {
+                 return Result.failure(IllegalArgumentException("Potential Password detected"))
+            }
+
             val clip = Clip(content = content.trim())
             val id = clipDao.insertClip(clip)
-    @ApplicationContext private val context: Context
-) {
-    // Placeholder implementation - replace with Room database later
-    private val clipboardCache = mutableListOf<ClipboardItem>()
 
-    fun getClipboardHistory(): Flow<List<ClipboardItem>> = flowOf(clipboardCache)
-
-            val clip = Clip(content = content.trim())
-            val id = clipDao.insertClip(clip)
-    fun saveClip(text: String, isSensitive: Boolean = false) {
-        if (text.isBlank()) return
-
-        val item = ClipboardItem(
-            id = UUID.randomUUID().toString(),
-            text = text,
-            timestamp = System.currentTimeMillis(),
-            isSensitive = isSensitive
-        )
+            // Trigger cleanup after save
+            performAutoCleanup()
 
             Timber.d("Saved clip: $content")
             Result.success(id)
@@ -104,12 +95,6 @@ class ClipboardRepository @Inject constructor(
             Result.failure(e)
         }
     }
-        clipboardCache.add(0, item)
-
-        // Limit cache size
-        if (clipboardCache.size > 500) {
-            clipboardCache.subList(500, clipboardCache.size).clear()
-        }
 
     suspend fun clearUnpinnedClips(): Result<Unit> {
         return try {
@@ -121,9 +106,17 @@ class ClipboardRepository @Inject constructor(
             Result.failure(e)
         }
     }
-}
 
-    // ✅ NEW: Auto-cleanup old clips
+    suspend fun performManualCleanup(): Result<Unit> {
+         return try {
+            performAutoCleanup()
+            Result.success(Unit)
+         } catch (e: Exception) {
+            Timber.e(e, "Error performing manual cleanup")
+            Result.failure(e)
+         }
+    }
+
     private suspend fun performAutoCleanup() {
         try {
             // 1. Limit total unpinned clips to MAX_UNPINNED_CLIPS
@@ -131,43 +124,18 @@ class ClipboardRepository @Inject constructor(
             if (unpinnedCount > MAX_UNPINNED_CLIPS) {
                 val toDelete = unpinnedCount - MAX_UNPINNED_CLIPS
                 clipDao.deleteOldestUnpinned(toDelete)
-                Timber.d("🧹 Deleted $toDelete old clips (limit: $MAX_UNPINNED_CLIPS)")
+                Timber.d("Deleted $toDelete old clips (limit: $MAX_UNPINNED_CLIPS)")
             }
 
             // 2. Delete clips older than AUTO_DELETE_DAYS
             val cutoffTimestamp = System.currentTimeMillis() -
                 TimeUnit.DAYS.toMillis(AUTO_DELETE_DAYS.toLong())
             clipDao.deleteOlderThan(cutoffTimestamp)
-            Timber.d("🧹 Deleted clips older than $AUTO_DELETE_DAYS days")
+            Timber.d("Deleted clips older than $AUTO_DELETE_DAYS days")
 
         } catch (e: Exception) {
             Timber.e(e, "Error during auto-cleanup")
-        }
-        Timber.d("✅ Saved clipboard item: ${text.take(50)}...")
-    }
-
-    fun clearAllClips() {
-        clipboardCache.clear()
-        Timber.d("✅ Clipboard history cleared")
-    }
-
-    fun performManualCleanup(): Result<Unit> {
-        return try {
-            // Remove items older than 30 days by default
-            val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
-            clipboardCache.removeAll { it.timestamp < thirtyDaysAgo }
-            Timber.d("✅ Manual cleanup completed")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Timber.e(e, "Error performing manual cleanup")
-            Result.failure(e)
+            throw e
         }
     }
 }
-
-data class ClipboardItem(
-    val id: String,
-    val text: String,
-    val timestamp: Long,
-    val isSensitive: Boolean
-)
