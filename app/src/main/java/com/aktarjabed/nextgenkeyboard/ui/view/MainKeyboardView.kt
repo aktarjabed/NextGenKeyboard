@@ -18,14 +18,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.unit.dp
-import com.aktarjabed.nextgenkeyboard.data.models.Language
 import androidx.compose.ui.unit.dp
 import com.aktarjabed.nextgenkeyboard.data.model.Language
 
@@ -47,44 +46,39 @@ fun MainKeyboardView(
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        // Top action bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onSettingsClick) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings")
-            }
-            IconButton(onClick = onVoiceInputClick) {
-                Icon(Icons.Default.Mic, contentDescription = "Voice Input")
-            }
-            IconButton(onClick = onGifKeyboardClick) {
-                Icon(Icons.Default.Gif, contentDescription = "GIF Keyboard")
-            }
-        }
-
-        // Suggestion bar
-        LazyRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp)
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            items(suggestions) { suggestion ->
-                Button(onClick = { onSuggestionClick(suggestion) }) {
-                    Text(suggestion)
+            // Top action bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onSettingsClick) {
+                    Icon(Icons.Default.Settings, contentDescription = "Settings")
+                }
+                IconButton(onClick = onVoiceInputClick) {
+                    Icon(Icons.Default.Mic, contentDescription = "Voice Input")
+                }
+                IconButton(onClick = onGifKeyboardClick) {
+                    Icon(Icons.Default.Gif, contentDescription = "GIF Keyboard")
                 }
             }
-        }
+
+            // Suggestion bar
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(40.dp)
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items(suggestions) { suggestion ->
+                    Button(onClick = { onSuggestionClick(suggestion) }) {
+                        Text(suggestion)
+                    }
+                }
+            }
 
             // Main keyboard layout
             Column(
@@ -104,23 +98,6 @@ fun MainKeyboardView(
                                 onClick = onKeyClick
                             )
                         }
-        // Main keyboard layout
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            language.layout.rows.forEach { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
-                ) {
-                    row.forEach { keyData ->
-                        Key(
-                            char = keyData.display,
-                            onClick = onKeyClick
-                        )
                     }
                 }
             }

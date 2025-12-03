@@ -1,30 +1,43 @@
 package com.aktarjabed.nextgenkeyboard.data.model
 
-import java.util.Locale
+import kotlinx.serialization.Serializable
 
-/**
- * Complete language definition for the keyboard
- * @param code Locale code (e.g., "en_US", "es_ES")
- * @param name English name of the language
- * @param nativeName Native name of the language
- * @param flagIcon Emoji flag representation
- * @param layout Keyboard layout structure
- * @param isRTL True if language is right-to-left (default false)
- * @param accentMap Map of base characters to their accented variants
- */
+@Serializable
 data class Language(
     val code: String,
     val name: String,
     val nativeName: String,
-    val flagIcon: String,
-    val layout: LanguageLayout,
+    val isSupported: Boolean = true,
     val isRTL: Boolean = false,
-    val accentMap: Map<String, List<String>> = emptyMap()
+    val layouts: List<LanguageLayout> = emptyList()
 ) {
+    val layout: LanguageLayout
+        get() = layouts.find { it.isDefault } ?: layouts.firstOrNull() ?: LanguageLayout.getEnglishLayout()
+
     companion object {
-        /**
-         * Convert language code to Locale object
-         */
-        fun toLocale(code: String): Locale = Locale.forLanguageTag(code.replace("_", "-"))
+        val SUPPORTED_LANGUAGES = listOf(
+            Language(
+                code = "en",
+                name = "English",
+                nativeName = "English",
+                layouts = listOf(LanguageLayout.getEnglishLayout())
+            ),
+            Language(
+                code = "hi",
+                name = "Hindi",
+                nativeName = "हिंदी",
+                layouts = listOf(LanguageLayout.getHindiLayout())
+            ),
+            Language(
+                code = "bn",
+                name = "Bengali",
+                nativeName = "বাংলা",
+                layouts = listOf(LanguageLayout.getBengaliLayout())
+            ),
+            // Added back commonly expected languages as placeholders to avoid regression
+             Language("es", "Spanish", "Español"),
+             Language("fr", "French", "Français"),
+             Language("de", "German", "Deutsch")
+        )
     }
 }
