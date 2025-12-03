@@ -2,7 +2,7 @@ package com.aktarjabed.nextgenkeyboard.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aktarjabed.nextgenkeyboard.data.models.LanguagesPro
+import com.aktarjabed.nextgenkeyboard.data.model.LanguagesPro
 import com.aktarjabed.nextgenkeyboard.repository.PreferencesRepository
 import com.aktarjabed.nextgenkeyboard.data.model.LanguagesPro
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository

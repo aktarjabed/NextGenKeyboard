@@ -1,16 +1,23 @@
 package com.aktarjabed.nextgenkeyboard.data.model
 
-/**
- * Represents a single key on the keyboard
- * @param primary Main character/text displayed on the key
- * @param secondary Optional secondary character (e.g., long-press symbol)
- * @param accents Optional list of accent characters for long-press menu
- */
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class KeyData(
-    val primary: String,
-    val secondary: String? = null,
-    val accents: List<String>? = null
+    val keyCode: Int,
+    val label: String,
+    val displayLabel: String? = null,
+    val keySymbol: String? = null,
+    val popupCharacters: List<String> = emptyList(),
+    val keyOutputText: String? = null,
+    val type: KeyType = KeyType.NORMAL,
+    val width: Int = 1,
+    val height: Int = 1
 ) {
-    // Helper for UI compatibility
-    val display: String get() = primary
+    enum class KeyType {
+        NORMAL, MODIFIER, FUNCTION, SPACER
+    }
+
+    // Compatibility helper for UI
+    val display: String get() = displayLabel ?: label
 }
