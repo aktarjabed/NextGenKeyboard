@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-    namespace = "com.nextgen.keyboard"
+    namespace = "com.aktarjabed.nextgenkeyboard"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.nextgen.keyboard"
+        applicationId = "com.aktarjabed.nextgenkeyboard"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
