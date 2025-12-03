@@ -1,6 +1,6 @@
 package com.aktarjabed.nextgenkeyboard.data.model
 
-import timber.log.Timber
+import kotlinx.serialization.Serializable
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -8,13 +8,11 @@ import javax.inject.Singleton
 @Singleton
 class LanguagesPro @Inject constructor() {
     companion object {
-        fun getAllLanguages(): List<Language> = Languages.all
+        fun getAllLanguages(): List<Language> = Language.SUPPORTED_LANGUAGES
 
         fun getLanguageByCode(code: String): Language {
-            return Languages.all.find { it.code.equals(code, ignoreCase = true) }
-                ?: Languages.ENGLISH_US.also {
-                    Timber.w("Language $code not found, defaulting to English (US)")
-                }
+            return Language.SUPPORTED_LANGUAGES.find { it.code.equals(code, ignoreCase = true) }
+                ?: Language.SUPPORTED_LANGUAGES.first()
         }
 
         fun getLanguageByLocale(locale: Locale): Language {
@@ -23,11 +21,8 @@ class LanguagesPro @Inject constructor() {
         }
 
         fun isRTLLanguage(code: String): Boolean {
-            return getLanguageByCode(code).isRTL
-        }
-
-        fun getAccentMap(languageCode: String): Map<String, List<String>> {
-            return getLanguageByCode(languageCode).accentMap
+            // Simple check, can be expanded
+            return code.startsWith("ar") || code.startsWith("he") || code.startsWith("fa")
         }
     }
 }

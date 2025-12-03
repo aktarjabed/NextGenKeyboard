@@ -1,7 +1,7 @@
 package com.aktarjabed.nextgenkeyboard.state
 
 import android.view.inputmethod.EditorInfo
-import com.aktarjabed.nextgenkeyboard.data.models.Language
+import com.aktarjabed.nextgenkeyboard.data.model.Language
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
