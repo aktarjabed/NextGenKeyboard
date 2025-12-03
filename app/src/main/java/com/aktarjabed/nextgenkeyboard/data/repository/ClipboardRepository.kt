@@ -55,6 +55,19 @@ class ClipboardRepository @Inject constructor(
             if (text.isNullOrBlank()) {
                 Timber.d("Clipboard content is empty")
                 return@withContext null
+            // Sensitive data checks based on updated requirements
+            if (isSensitiveContent(content)) {
+                return Result.failure(IllegalArgumentException("Potential sensitive data detected"))
+            }
+
+            val clip = Clip(content = content.trim())
+            val id = clipboardDao.insertClip(clip)
+
+            // Trigger cleanup after save, but don't fail if it errors
+            try {
+                performAutoCleanup()
+            } catch (cleanupError: Exception) {
+                Timber.w(cleanupError, "Cleanup failed after save, but save was successful")
             }
 
             text
@@ -130,6 +143,25 @@ class ClipboardRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error pasting from clipboard")
             null
+        }
+    }
+
+    private fun isSensitiveContent(content: String): Boolean {
+        return when {
+            // OTP detection: exactly 6 digits, only
+            content.matches(Regex("^\\d{6}$")) -> true
+
+            // Credit card: 13-19 digits with possible spaces
+            content.replace(" ", "").matches(Regex("^\\d{13,19}$")) -> true
+
+            // Keyword detection
+            content.contains("password", ignoreCase = true) -> true
+            content.contains("token", ignoreCase = true) -> true
+            content.contains("secret", ignoreCase = true) -> true
+            content.contains("pin", ignoreCase = true) -> true
+            content.contains("ssn", ignoreCase = true) -> true
+
+            else -> false
         }
     }
 }
