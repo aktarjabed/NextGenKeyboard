@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.aktarjabed.nextgenkeyboard">
 
     <!-- Permissions -->
-    <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Required permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -35,13 +33,6 @@
         <activity
             android:name=".ui.screens.MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.NextGenKeyboard">
-        android:hardwareAccelerated="true"
-        tools:targetApi="31">
-
-        <activity
-            android:name=".ui.screens.MainActivity"
-            android:exported="true"
             android:theme="@style/Theme.NextGenKeyboard"
             android:screenOrientation="portrait"
             android:configChanges="orientation|screenSize|keyboardHidden">
@@ -52,10 +43,6 @@
         </activity>
 
         <!-- Keyboard Input Method Service -->
-        <service
-            android:name=".service.NextGenKeyboardService"
-            android:exported="true"
-            android:permission="android.permission.BIND_INPUT_METHOD">
         <service
             android:name=".service.NextGenKeyboardService"
             android:exported="true"
