@@ -11,6 +11,10 @@ plugins {
 
 android {
     namespace = "com.aktarjabed.nextgenkeyboard"
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "com.aktarjabed.nextgenkeyboard"
     compileSdk = 36  // ✅ UPDATED: 34 → 36
 
     defaultConfig {
@@ -101,6 +105,8 @@ dependencies {
 
     // Compose
     implementation(platform("androidx.compose:compose-bom:2025.10.01"))
+    // Compose
+    implementation(platform("androidx.compose:compose-bom:2025.10.01"))
     implementation("androidx.core:core-ktx:1.15.0")  // ✅ UPDATED: 1.13.1 → 1.15.0 (safe for Kotlin 1.9.x)
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
     implementation("androidx.activity:activity-compose:1.9.2")
@@ -158,6 +164,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2025.10.01"))
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.10.01"))  // ✅ UPDATED
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.10.01"))
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.10.01"))  // ✅ UPDATED: Match main BOM

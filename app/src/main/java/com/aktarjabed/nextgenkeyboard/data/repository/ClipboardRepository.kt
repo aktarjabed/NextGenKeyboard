@@ -1,42 +1,60 @@
 package com.aktarjabed.nextgenkeyboard.data.repository
 
-import com.aktarjabed.nextgenkeyboard.data.local.ClipboardDao
-import com.aktarjabed.nextgenkeyboard.data.model.Clip
-import kotlinx.coroutines.flow.Flow
+import android.content.ClipboardManager
+import android.content.Context
+import com.aktarjabed.nextgenkeyboard.data.db.ClipboardDatabase
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
 class ClipboardRepository @Inject constructor(
-    private val clipboardDao: ClipboardDao
+    @ApplicationContext private val context: Context,
+    private val database: ClipboardDatabase
 ) {
-    companion object {
-        private const val MAX_UNPINNED_CLIPS = 500
-        private const val AUTO_DELETE_DAYS = 30
-    }
+    private val clipboardManager =
+        context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
 
-    fun getPinnedClips(): Flow<List<Clip>> = clipboardDao.getPinnedClips()
+    // ✅ FIXED ISSUE 1: Smarter sensitivity filter
+    private fun isSensitiveContent(text: String): Boolean {
+        val sensitivePatterns = listOf(
+            "password", "token", "secret", "api_key", "private_key",
+            "credit_card", "ssn", "pin", "cvv", "bearer", "authorization"
+        )
 
-    fun getRecentClips(): Flow<List<Clip>> = clipboardDao.getRecentClips()
-
-    suspend fun searchClips(query: String): Result<List<Clip>> {
-        return try {
-            val clips = clipboardDao.searchClips(query)
-            Result.success(clips)
-        } catch (e: Exception) {
-            Timber.e(e, "Error searching clips")
-            Result.failure(e)
+        // ✅ Check for sensitive keywords (primary filter)
+        val hasSensitiveKeyword = sensitivePatterns.any {
+            text.contains(it, ignoreCase = true)
         }
+
+        // ✅ Secondary filter: very high entropy + length suggests encrypted/token
+        // Only reject if: contains 20+ chars AND mix of numbers/special chars
+        val isHighEntropy = text.length >= 20 &&
+                           text.any { it.isDigit() } &&
+                           text.any { !it.isLetterOrDigit() && it != ' ' }
+
+        return hasSensitiveKeyword || isHighEntropy
     }
 
-    suspend fun saveClip(content: String): Result<Long> {
-        return try {
-            if (content.isBlank()) {
-                return Result.failure(IllegalArgumentException("Clip content cannot be blank"))
+    // ✅ FIXED ISSUE 3: Safe null handling
+    suspend fun getClipboardContent(): String? = withContext(Dispatchers.IO) {
+        try {
+            val clipboardManager = clipboardManager ?: run {
+                Timber.w("ClipboardManager not available")
+                return@withContext null
             }
 
+            val primaryClip = clipboardManager.primaryClip
+            if (primaryClip == null || primaryClip.itemCount == 0) {
+                Timber.d("No clipboard content available")
+                return@withContext null
+            }
+
+            val text = primaryClip.getItemAt(0)?.text?.toString()
+            if (text.isNullOrBlank()) {
+                Timber.d("Clipboard content is empty")
+                return@withContext null
             // Sensitive data checks based on updated requirements
             if (isSensitiveContent(content)) {
                 return Result.failure(IllegalArgumentException("Potential sensitive data detected"))
@@ -52,87 +70,79 @@ class ClipboardRepository @Inject constructor(
                 Timber.w(cleanupError, "Cleanup failed after save, but save was successful")
             }
 
-            Timber.d("Saved clip: $content")
-            Result.success(id)
+            text
         } catch (e: Exception) {
-            Timber.e(e, "Error saving clip")
-            Result.failure(e)
+            Timber.e(e, "Error accessing clipboard content")
+            null
         }
     }
 
-    suspend fun updateClip(clip: Clip): Result<Unit> {
-        return try {
-            clipboardDao.updateClip(clip)
-            Timber.d("Updated clip: ${clip.id}")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Timber.e(e, "Error updating clip")
-            Result.failure(e)
-        }
-    }
-
-    suspend fun deleteClip(clip: Clip): Result<Unit> {
-        return try {
-            clipboardDao.deleteClip(clip)
-            Timber.d("Deleted clip: ${clip.id}")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Timber.e(e, "Error deleting clip")
-            Result.failure(e)
-        }
-    }
-
-    suspend fun clearAllClips(): Result<Unit> {
-        return try {
-            clipboardDao.deleteAllClips()
-            Timber.d("Cleared all clips")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Timber.e(e, "Error clearing clips")
-            Result.failure(e)
-        }
-    }
-
-    suspend fun clearUnpinnedClips(): Result<Unit> {
-        return try {
-            clipboardDao.clearUnpinnedClips()
-            Timber.d("Cleared unpinned clips")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Timber.e(e, "Error clearing unpinned clips")
-            Result.failure(e)
-        }
-    }
-
-    suspend fun performManualCleanup(): Result<Unit> {
-         return try {
-            performAutoCleanup()
-            Result.success(Unit)
-         } catch (e: Exception) {
-            Timber.e(e, "Error performing manual cleanup")
-            Result.failure(e)
-         }
-    }
-
-    private suspend fun performAutoCleanup() {
+    // ✅ FIXED ISSUE 2: Proper error handling + logging
+    suspend fun cleanup() = withContext(Dispatchers.IO) {
         try {
-            // 1. Limit total unpinned clips to MAX_UNPINNED_CLIPS
-            val unpinnedCount = clipboardDao.getUnpinnedCount()
-            if (unpinnedCount > MAX_UNPINNED_CLIPS) {
-                val toDelete = unpinnedCount - MAX_UNPINNED_CLIPS
-                clipboardDao.deleteOldestUnpinned(toDelete)
-                Timber.d("Deleted $toDelete old clips (limit: $MAX_UNPINNED_CLIPS)")
+            Timber.d("Starting clipboard cleanup...")
+
+            val allItems = database.clipboardDao().getAllClipboard()
+            if (allItems.isEmpty()) {
+                Timber.d("No items to cleanup")
+                return@withContext
             }
 
-            // 2. Delete clips older than AUTO_DELETE_DAYS
-            val cutoffTimestamp = System.currentTimeMillis() -
-                TimeUnit.DAYS.toMillis(AUTO_DELETE_DAYS.toLong())
-            clipboardDao.deleteOlderThan(cutoffTimestamp)
-            Timber.d("Deleted clips older than $AUTO_DELETE_DAYS days")
+            var deletedCount = 0
+            allItems.forEach { item ->
+                try {
+                    database.clipboardDao().delete(item)
+                    deletedCount++
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to delete clipboard item: ${item.id}")
+                    // Continue with next item instead of crashing
+                }
+            }
+
+            Timber.i("Cleanup complete: deleted $deletedCount items")
 
         } catch (e: Exception) {
-            Timber.e(e, "Error during auto-cleanup")
-            throw e
+            Timber.e(e, "Critical error during clipboard cleanup")
+            // Don't rethrow - allow app to continue
+        }
+    }
+
+    // ✅ NEW: Safe copy to clipboard
+    suspend fun copyToClipboard(text: String, label: String = "Copied"): Boolean =
+        withContext(Dispatchers.IO) {
+            return@withContext try {
+                val manager = clipboardManager ?: return@withContext false
+                val clip = android.content.ClipData.newPlainText(label, text)
+                manager.setPrimaryClip(clip)
+                Timber.d("Copied to clipboard: $label")
+                true
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to copy to clipboard")
+                false
+            }
+        }
+
+    // ✅ NEW: Safe paste from clipboard
+    suspend fun pasteFromClipboard(): String? = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val manager = clipboardManager ?: return@withContext null
+            val primaryClip = manager.primaryClip ?: return@withContext null
+
+            if (primaryClip.itemCount == 0) return@withContext null
+
+            val text = primaryClip.getItemAt(0)?.text?.toString()
+            if (text.isNullOrBlank()) return@withContext null
+
+            if (isSensitiveContent(text)) {
+                Timber.w("Detected sensitive content in clipboard - blocking paste")
+                return@withContext null
+            }
+
+            Timber.d("Pasted from clipboard: ${text.take(20)}...")
+            text
+        } catch (e: Exception) {
+            Timber.e(e, "Error pasting from clipboard")
+            null
         }
     }
 
