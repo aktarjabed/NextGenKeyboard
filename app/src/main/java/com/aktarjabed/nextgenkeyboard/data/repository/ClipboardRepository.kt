@@ -7,13 +7,12 @@ import com.aktarjabed.nextgenkeyboard.data.model.Clip
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
 class ClipboardRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: ClipboardDatabase
@@ -68,6 +67,46 @@ class ClipboardRepository @Inject constructor(
             }
 
             // Sensitive data checks
+    // ✅ FIXED ISSUE 1: Smarter sensitivity filter
+    private fun isSensitiveContent(text: String): Boolean {
+        val sensitivePatterns = listOf(
+            "password", "token", "secret", "api_key", "private_key",
+            "credit_card", "ssn", "pin", "cvv", "bearer", "authorization"
+        )
+
+        // ✅ Check for sensitive keywords (primary filter)
+        val hasSensitiveKeyword = sensitivePatterns.any {
+            text.contains(it, ignoreCase = true)
+        }
+
+        // ✅ Secondary filter: very high entropy + length suggests encrypted/token
+        // Only reject if: contains 20+ chars AND mix of numbers/special chars
+        val isHighEntropy = text.length >= 20 &&
+                           text.any { it.isDigit() } &&
+                           text.any { !it.isLetterOrDigit() && it != ' ' }
+
+        return hasSensitiveKeyword || isHighEntropy
+    }
+
+    // ✅ FIXED ISSUE 3: Safe null handling
+    suspend fun getClipboardContent(): String? = withContext(Dispatchers.IO) {
+        try {
+            val clipboardManager = clipboardManager ?: run {
+                Timber.w("ClipboardManager not available")
+                return@withContext null
+            }
+
+            val primaryClip = clipboardManager.primaryClip
+            if (primaryClip == null || primaryClip.itemCount == 0) {
+                Timber.d("No clipboard content available")
+                return@withContext null
+            }
+
+            val text = primaryClip.getItemAt(0)?.text?.toString()
+            if (text.isNullOrBlank()) {
+                Timber.d("Clipboard content is empty")
+                return@withContext null
+            // Sensitive data checks based on updated requirements
             if (isSensitiveContent(content)) {
                 return Result.failure(IllegalArgumentException("Potential sensitive data detected"))
             }
@@ -76,17 +115,17 @@ class ClipboardRepository @Inject constructor(
             val id = database.clipboardDao().insertClip(clip)
 
             // ✅ FIXED ISSUE 2: Trigger cleanup after save, but don't fail if it errors
+            // Trigger cleanup after save, but don't fail if it errors
             try {
                 performAutoCleanup()
             } catch (cleanupError: Exception) {
                 Timber.w(cleanupError, "Cleanup failed after save, but save was successful")
             }
 
-            Timber.d("Saved clip: $content")
-            Result.success(id)
+            text
         } catch (e: Exception) {
-            Timber.e(e, "Error saving clip")
-            Result.failure(e)
+            Timber.e(e, "Error accessing clipboard content")
+            null
         }
     }
 
@@ -106,9 +145,33 @@ class ClipboardRepository @Inject constructor(
             database.clipboardDao().deleteClip(clip)
             Timber.d("Deleted clip: ${clip.id}")
             Result.success(Unit)
+    // ✅ FIXED ISSUE 2: Proper error handling + logging
+    suspend fun cleanup() = withContext(Dispatchers.IO) {
+        try {
+            Timber.d("Starting clipboard cleanup...")
+
+            val allItems = database.clipboardDao().getAllClipboard()
+            if (allItems.isEmpty()) {
+                Timber.d("No items to cleanup")
+                return@withContext
+            }
+
+            var deletedCount = 0
+            allItems.forEach { item ->
+                try {
+                    database.clipboardDao().delete(item)
+                    deletedCount++
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to delete clipboard item: ${item.id}")
+                    // Continue with next item instead of crashing
+                }
+            }
+
+            Timber.i("Cleanup complete: deleted $deletedCount items")
+
         } catch (e: Exception) {
-            Timber.e(e, "Error deleting clip")
-            Result.failure(e)
+            Timber.e(e, "Critical error during clipboard cleanup")
+            // Don't rethrow - allow app to continue
         }
     }
 
@@ -120,17 +183,47 @@ class ClipboardRepository @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Error clearing clips")
             Result.failure(e)
+    // ✅ NEW: Safe copy to clipboard
+    suspend fun copyToClipboard(text: String, label: String = "Copied"): Boolean =
+        withContext(Dispatchers.IO) {
+            return@withContext try {
+                val manager = clipboardManager ?: return@withContext false
+                val clip = android.content.ClipData.newPlainText(label, text)
+                manager.setPrimaryClip(clip)
+                Timber.d("Copied to clipboard: $label")
+                true
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to copy to clipboard")
+                false
+            }
         }
-    }
 
     suspend fun clearUnpinnedClips(): Result<Unit> {
         return try {
             database.clipboardDao().clearUnpinnedClips()
             Timber.d("Cleared unpinned clips")
             Result.success(Unit)
+    // ✅ NEW: Safe paste from clipboard
+    suspend fun pasteFromClipboard(): String? = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val manager = clipboardManager ?: return@withContext null
+            val primaryClip = manager.primaryClip ?: return@withContext null
+
+            if (primaryClip.itemCount == 0) return@withContext null
+
+            val text = primaryClip.getItemAt(0)?.text?.toString()
+            if (text.isNullOrBlank()) return@withContext null
+
+            if (isSensitiveContent(text)) {
+                Timber.w("Detected sensitive content in clipboard - blocking paste")
+                return@withContext null
+            }
+
+            Timber.d("Pasted from clipboard: ${text.take(20)}...")
+            text
         } catch (e: Exception) {
-            Timber.e(e, "Error clearing unpinned clips")
-            Result.failure(e)
+            Timber.e(e, "Error pasting from clipboard")
+            null
         }
     }
 
@@ -150,10 +243,88 @@ class ClipboardRepository @Inject constructor(
                 TimeUnit.DAYS.toMillis(AUTO_DELETE_DAYS.toLong())
             database.clipboardDao().deleteOlderThan(cutoffTimestamp)
             Timber.d("Deleted clips older than $AUTO_DELETE_DAYS days")
+    private fun isSensitiveContent(content: String): Boolean {
+        return when {
+            // OTP detection: exactly 6 digits, only
+            content.matches(Regex("^\\d{6}$")) -> true
 
+            // Credit card: 13-19 digits with possible spaces
+            content.replace(" ", "").matches(Regex("^\\d{13,19}$")) -> true
+
+            // Keyword detection
+            content.contains("password", ignoreCase = true) -> true
+            content.contains("token", ignoreCase = true) -> true
+            content.contains("secret", ignoreCase = true) -> true
+            content.contains("pin", ignoreCase = true) -> true
+            content.contains("ssn", ignoreCase = true) -> true
+
+            else -> false
+        }
+    }
+
+    // ✅ FIXED ISSUE 3: Safe null handling
+    suspend fun getClipboardContent(): String? = withContext(Dispatchers.IO) {
+        try {
+            val clipboardManager = clipboardManager ?: run {
+                Timber.w("ClipboardManager not available")
+                return@withContext null
+            }
+
+            val primaryClip = clipboardManager.primaryClip
+            if (primaryClip == null || primaryClip.itemCount == 0) {
+                Timber.d("No clipboard content available")
+                return@withContext null
+            }
+
+            val text = primaryClip.getItemAt(0)?.text?.toString()
+            if (text.isNullOrBlank()) {
+                Timber.d("Clipboard content is empty")
+                return@withContext null
+            }
+
+            text
         } catch (e: Exception) {
-            Timber.e(e, "Error during auto-cleanup")
-            throw e
+            Timber.e(e, "Error accessing clipboard content")
+            null
+        }
+    }
+
+    // ✅ NEW: Safe copy to clipboard
+    suspend fun copyToClipboard(text: String, label: String = "Copied"): Boolean =
+        withContext(Dispatchers.IO) {
+            return@withContext try {
+                val manager = clipboardManager ?: return@withContext false
+                val clip = android.content.ClipData.newPlainText(label, text)
+                manager.setPrimaryClip(clip)
+                Timber.d("Copied to clipboard: $label")
+                true
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to copy to clipboard")
+                false
+            }
+        }
+
+    // ✅ NEW: Safe paste from clipboard
+    suspend fun pasteFromClipboard(): String? = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val manager = clipboardManager ?: return@withContext null
+            val primaryClip = manager.primaryClip ?: return@withContext null
+
+            if (primaryClip.itemCount == 0) return@withContext null
+
+            val text = primaryClip.getItemAt(0)?.text?.toString()
+            if (text.isNullOrBlank()) return@withContext null
+
+            if (isSensitiveContent(text)) {
+                Timber.w("Detected sensitive content in clipboard - blocking paste")
+                return@withContext null
+            }
+
+            Timber.d("Pasted from clipboard: ${text.take(20)}...")
+            text
+        } catch (e: Exception) {
+            Timber.e(e, "Error pasting from clipboard")
+            null
         }
     }
 

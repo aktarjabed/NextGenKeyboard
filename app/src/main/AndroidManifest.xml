@@ -1,15 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-<<<<<<< HEAD
-<<<<<<< HEAD
     xmlns:tools="http://schemas.android.com/tools"
     package="com.aktarjabed.nextgenkeyboard">
 
     <!-- Permissions -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_CLIPBOARD_CONTENT" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Optional permissions -->
     <uses-permission android:name="android.permission.CAMERA" android:required="false" />
@@ -18,77 +16,71 @@
     <uses-feature
         android:name="android.hardware.microphone"
         android:required="false" />
-=======
-=======
->>>>>>> origin/feature/multi-language-support
-    xmlns:tools="http://schemas.android.com/tools">
-
-    <!-- Permissions -->
-    <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.INTERNET" />
-<<<<<<< HEAD
->>>>>>> origin/feature/multi-language-support
-=======
->>>>>>> origin/feature/multi-language-support
 
     <application
         android:name=".NextGenKeyboardApp"
-        android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.NextGenKeyboard"
-        tools:targetApi="31">
+        android:theme="@style/Theme.NextGenKeyboard">
 
         <!-- Main Activity -->
         <activity
             android:name=".ui.screens.MainActivity"
             android:exported="true"
-<<<<<<< HEAD
-<<<<<<< HEAD
             android:theme="@style/Theme.NextGenKeyboard"
             android:screenOrientation="portrait"
             android:configChanges="orientation|screenSize|keyboardHidden">
-=======
-            android:theme="@style/Theme.NextGenKeyboard">
->>>>>>> origin/feature/multi-language-support
-=======
-            android:theme="@style/Theme.NextGenKeyboard">
->>>>>>> origin/feature/multi-language-support
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- Keyboard Input Method Service -->
+        <!-- Settings Activity -->
+        <activity
+            android:name=".ui.screens.SettingsActivity"
+            android:exported="false"
+            android:label="@string/settings_title" />
+
+        <!-- IME Service -->
         <service
             android:name=".service.NextGenKeyboardService"
+            android:enabled="true"
             android:exported="true"
-<<<<<<< HEAD
-<<<<<<< HEAD
             android:permission="android.permission.BIND_INPUT_METHOD"
             android:label="@string/keyboard_name">
-=======
-            android:permission="android.permission.BIND_INPUT_METHOD">
->>>>>>> origin/feature/multi-language-support
-=======
-            android:permission="android.permission.BIND_INPUT_METHOD">
->>>>>>> origin/feature/multi-language-support
             <intent-filter>
                 <action android:name="android.view.InputMethod" />
             </intent-filter>
+
             <meta-data
                 android:name="android.view.im"
                 android:resource="@xml/method" />
         </service>
-<<<<<<< HEAD
-<<<<<<< HEAD
 
-        <!-- Provider for secure file sharing -->
+        <!-- Boot Completed Receiver -->
+        <receiver
+            android:name=".receiver.BootCompletedReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Locale Change Receiver -->
+        <receiver
+            android:name=".receiver.LocaleChangeReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- FileProvider for secure file sharing -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -101,11 +93,3 @@
 
     </application>
 </manifest>
-=======
-    </application>
-</manifest>
->>>>>>> origin/feature/multi-language-support
-=======
-    </application>
-</manifest>
->>>>>>> origin/feature/multi-language-support
