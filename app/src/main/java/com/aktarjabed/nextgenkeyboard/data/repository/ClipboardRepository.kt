@@ -327,4 +327,70 @@ class ClipboardRepository @Inject constructor(
             null
         }
     }
+
+    // ✅ FIXED ISSUE 3: Safe null handling
+    suspend fun getClipboardContent(): String? = withContext(Dispatchers.IO) {
+        try {
+            val clipboardManager = clipboardManager ?: run {
+                Timber.w("ClipboardManager not available")
+                return@withContext null
+            }
+
+            val primaryClip = clipboardManager.primaryClip
+            if (primaryClip == null || primaryClip.itemCount == 0) {
+                Timber.d("No clipboard content available")
+                return@withContext null
+            }
+
+            val text = primaryClip.getItemAt(0)?.text?.toString()
+            if (text.isNullOrBlank()) {
+                Timber.d("Clipboard content is empty")
+                return@withContext null
+            }
+
+            text
+        } catch (e: Exception) {
+            Timber.e(e, "Error accessing clipboard content")
+            null
+        }
+    }
+
+    // ✅ NEW: Safe copy to clipboard
+    suspend fun copyToClipboard(text: String, label: String = "Copied"): Boolean =
+        withContext(Dispatchers.IO) {
+            return@withContext try {
+                val manager = clipboardManager ?: return@withContext false
+                val clip = android.content.ClipData.newPlainText(label, text)
+                manager.setPrimaryClip(clip)
+                Timber.d("Copied to clipboard: $label")
+                true
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to copy to clipboard")
+                false
+            }
+        }
+
+    // ✅ NEW: Safe paste from clipboard
+    suspend fun pasteFromClipboard(): String? = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val manager = clipboardManager ?: return@withContext null
+            val primaryClip = manager.primaryClip ?: return@withContext null
+
+            if (primaryClip.itemCount == 0) return@withContext null
+
+            val text = primaryClip.getItemAt(0)?.text?.toString()
+            if (text.isNullOrBlank()) return@withContext null
+
+            if (isSensitiveContent(text)) {
+                Timber.w("Detected sensitive content in clipboard - blocking paste")
+                return@withContext null
+            }
+
+            Timber.d("Pasted from clipboard: ${text.take(20)}...")
+            text
+        } catch (e: Exception) {
+            Timber.e(e, "Error pasting from clipboard")
+            null
+        }
+    }
 }

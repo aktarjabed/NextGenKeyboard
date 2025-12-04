@@ -69,6 +69,9 @@ class NextGenKeyboardService : InputMethodService() {
             }
 
             logInfo("Keyboard components initialized successfully")
+        } catch (oom: OutOfMemoryError) {
+            logError("Out of memory during initialization", oom)
+            throw oom
         } catch (e: Exception) {
             logError("Error during initialization", e)
             throw e
@@ -133,6 +136,21 @@ class NextGenKeyboardService : InputMethodService() {
         } catch (e: Exception) {
             logError("Error creating input view", e)
             createFallbackView()
+        }
+    }
+
+    override fun onFinishInput() {
+        super.onFinishInput()
+
+        try {
+            isPasswordMode = false
+            currentPackageName = null
+
+            // Clear security flags
+            window?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            Timber.d("Input session finished - Security reset")
+        } catch (e: Exception) {
+            Timber.e(e, "Error in onFinishInput")
         }
     }
 
