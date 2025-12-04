@@ -177,6 +177,38 @@ class NextGenKeyboardService : InputMethodService() {
         if (text.isBlank()) return
 
         when (text) {
+            "⌫" -> {
+                handleBackspace()
+                return
+            }
+            "↵" -> {
+                handleEnter()
+                return
+            }
+            "SPACE" -> {
+                commitText(" ")
+                return
+            }
+        }
+
+        serviceScope?.launch {
+            try {
+                // Process through autocorrect if enabled
+                val processedText = if (viewModel.isAutocorrectEnabled() && !isPasswordMode) {
+                    autocorrectEngine.processInput(text)
+                } else {
+                    text
+                }
+
+                commitText(processedText)
+
+                // Learn from user input only if not a password
+                if (!isPasswordMode) {
+                    autocorrectEngine.learnWord(processedText)
+                }
+            } catch (e: Exception) {
+                logError("Error processing key press", e)
+                // Fallback to original text
             "⌫" -> handleBackspace()
             "↵" -> handleEnter()
             "SPACE" -> commitText(" ")
@@ -208,6 +240,18 @@ class NextGenKeyboardService : InputMethodService() {
         startActivity(intent)
     }
 
+    private fun createFallbackView(): View {
+        return android.widget.TextView(this).apply {
+            text = "Keyboard temporarily unavailable. Please restart the app."
+            setPadding(32, 32, 32, 32)
+            gravity = android.view.Gravity.CENTER
+            setBackgroundColor(ContextCompat.getColor(context, android.R.color.white))
+            setTextColor(ContextCompat.getColor(context, android.R.color.black))
+        }
+    }
+
+    private fun getGiphyApiKey(): String {
+        return BuildConfig.GIPHY_API_KEY.takeIf { it.isNotEmpty() } ?: ""
     private fun detectPasswordField(inputType: Int, editorInfo: EditorInfo?): Boolean {
          val inputClass = inputType and InputType.TYPE_MASK_CLASS
          val inputVariation = inputType and InputType.TYPE_MASK_VARIATION
@@ -232,6 +276,106 @@ class NextGenKeyboardService : InputMethodService() {
         }
     }
 
+    // --- Security Logic Ported from Legacy Implementation ---
+
+    private fun detectPasswordField(inputType: Int, editorInfo: EditorInfo?): Boolean {
+        try {
+            val inputClass = inputType and InputType.TYPE_MASK_CLASS
+            val inputVariation = inputType and InputType.TYPE_MASK_VARIATION
+
+            // Method 1: Detect text-based password fields
+            val isTextPassword = inputClass == InputType.TYPE_CLASS_TEXT && (
+                inputVariation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
+                inputVariation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
+                inputVariation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+            )
+
+            // Method 2: Detect number-based password fields (PIN codes)
+            val isNumberPassword = inputClass == InputType.TYPE_CLASS_NUMBER &&
+                inputVariation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
+
+            // Method 3: Check hint text for password keywords
+            val hasPasswordHint = editorInfo?.let { info ->
+                val hintText = info.hintText?.toString()?.lowercase() ?: ""
+                val label = info.label?.toString()?.lowercase() ?: ""
+
+                hintText.contains("password") ||
+                hintText.contains("pin") ||
+                hintText.contains("passcode") ||
+                hintText.contains("senha") ||
+                hintText.contains("contraseña") ||
+                label.contains("password") ||
+                label.contains("pin")
+            } ?: false
+
+            // Method 4: Detect sensitive apps
+            val isSensitiveApp = editorInfo?.packageName?.let { pkg ->
+                val pkgLower = pkg.lowercase()
+
+                pkgLower.contains("bank") ||
+                pkgLower.contains("hsbc") ||
+                pkgLower.contains("chase") ||
+                pkgLower.contains("citibank") ||
+                pkgLower.contains("wallet") ||
+                pkgLower.contains("payment") ||
+                pkgLower.contains("paypal") ||
+                pkgLower.contains("venmo") ||
+                pkgLower.contains("gpay") ||
+                pkgLower.contains("paytm") ||
+                pkgLower.contains("phonepe") ||
+                pkgLower.contains("password") ||
+                pkgLower.contains("authenticator") ||
+                pkgLower.contains("keepass") ||
+                pkgLower.contains("bitwarden") ||
+                pkgLower.contains("lastpass") ||
+                pkgLower.contains("1password") ||
+                pkgLower.contains("dashlane") ||
+                pkgLower.contains("crypto") ||
+                pkgLower.contains("coinbase") ||
+                pkgLower.contains("blockchain") ||
+                pkgLower.contains("binance")
+            } ?: false
+
+            return isTextPassword || isNumberPassword || hasPasswordHint || isSensitiveApp
+        } catch (e: Exception) {
+            Timber.e(e, "Error detecting password field")
+            return false
+        }
+    }
+
+    private fun applySecurityMode(isPassword: Boolean) {
+        try {
+            window?.window?.let { window ->
+                if (isPassword) {
+                    // Prevent screenshots and screen recording
+                    window.setFlags(
+                        WindowManager.LayoutParams.FLAG_SECURE,
+                        WindowManager.LayoutParams.FLAG_SECURE
+                    )
+
+                    // Disable suggestions
+                    currentInputConnection?.performPrivateCommand("DisableSuggestions", null)
+
+                    Timber.d("🔒 SECURITY ENABLED:")
+                    Timber.d("   ├─ Screenshots: BLOCKED")
+                    Timber.d("   ├─ Screen Recording: BLOCKED")
+                    Timber.d("   ├─ Clipboard: DISABLED")
+                    Timber.d("   └─ Swipe Typing: DISABLED")
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                    Timber.d("🔓 Security mode disabled")
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error applying security mode")
+        }
+    }
+}
+
+sealed class KeyboardState {
+    object Main : KeyboardState()
+    object Voice : KeyboardState()
+    object Gif : KeyboardState()
     private fun createFallbackView(): View {
         return android.widget.TextView(this).apply {
             text = "Keyboard unavailable."
