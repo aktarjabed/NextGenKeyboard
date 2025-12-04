@@ -12,6 +12,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -66,10 +67,10 @@ class PreferencesRepository @Inject constructor(
         prefs[KEYBOARD_LANGUAGE] ?: DEFAULT_LANGUAGE
     }
 
-    // Suspended getter to avoid blocking the main thread
-    suspend fun getKeyboardLanguage(): String {
+    // Using runBlocking to support legacy synchronous calls until full migration to Flow
+    fun getKeyboardLanguage(): String {
         return try {
-            keyboardLanguage.first()
+            runBlocking { keyboardLanguage.first() }
         } catch (e: Exception) {
             Timber.e(e, "Error reading keyboard language")
             DEFAULT_LANGUAGE
@@ -89,9 +90,9 @@ class PreferencesRepository @Inject constructor(
         prefs[THEME_PREFERENCE] ?: DEFAULT_THEME
     }
 
-    suspend fun getThemePreference(): String {
+    fun getThemePreference(): String {
         return try {
-            themePreference.first()
+            runBlocking { themePreference.first() }
         } catch (e: Exception) {
             Timber.e(e, "Error reading theme preference")
             DEFAULT_THEME

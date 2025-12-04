@@ -1,3 +1,12 @@
+<<<<<<< HEAD
+<<<<<<< HEAD
+.gradle/
+build/
+local.properties
+*.log
+=======
+=======
+>>>>>>> origin/feature/multi-language-support
 # Android Studio
 .gradle
 /build
@@ -11,4 +20,9 @@ local.properties
 
 # Keystore files
 *.jks
+<<<<<<< HEAD
 *.keystore
+>>>>>>> origin/feature/multi-language-support
+=======
+*.keystore
+>>>>>>> origin/feature/multi-language-support
