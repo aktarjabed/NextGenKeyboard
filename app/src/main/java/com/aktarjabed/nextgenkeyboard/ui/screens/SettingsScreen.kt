@@ -3,848 +3,324 @@ package com.aktarjabed.nextgenkeyboard.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.aktarjabed.nextgenkeyboard.data.model.KeyboardLayout
 import com.aktarjabed.nextgenkeyboard.ui.viewmodel.SettingsViewModel
 import timber.log.Timber
-import com.aktarjabed.nextgenkeyboard.ui.viewmodel.SettingsViewModel
 
+/**
+ * Settings Screen Composable
+ * Displays clipboard history, multi-language options, and preferences
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = hiltViewModel(),
+    onNavigateBack: () -> Unit
 ) {
-    val isDarkMode by viewModel.isDarkMode.collectAsState(initial = true)
-    val selectedLayout by viewModel.selectedLayout.collectAsState(initial = "QWERTY")
-    val isHapticEnabled by viewModel.isHapticEnabled.collectAsState(initial = true)
-    val isSwipeEnabled by viewModel.isSwipeEnabled.collectAsState(initial = true)
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    val clearSuccess by viewModel.clearSuccess.collectAsState()
+    val pinnedClips by viewModel.pinnedClips.collectAsState(emptyList())
+    val recentClips by viewModel.recentClips.collectAsState(emptyList())
+
+    var showClearDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        "Settings",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                title = { Text("Settings") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
             )
         }
     ) { paddingValues ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            item { Spacer(modifier = Modifier.height(8.dp)) }
-
-            // APPEARANCE SECTION
-            item {
-                SectionHeader(
-                    title = "Appearance",
-                    icon = Icons.Default.Palette
-                )
-            }
-
-            item {
-                SettingsCard {
-                    ThemeSwitchSetting(
-                        isDarkMode = isDarkMode,
-                        onThemeChange = {
-                            try {
-                                viewModel.setDarkMode(it)
-                            } catch (e: Exception) {
-                                Timber.e(e, "Error changing theme")
-                            }
-                        }
-                    )
-                }
-            }
-
-            // KEYBOARD LAYOUT SECTION
-            item {
-                SectionHeader(
-                    title = "Keyboard Layouts",
-                    icon = Icons.Default.Keyboard
-                )
-            }
-
-            item {
-                LayoutSelectionCard(
-                    selectedLayout = selectedLayout,
-                    onLayoutSelected = {
-                        try {
-                            viewModel.setLayout(it)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error changing layout")
-                        }
-                    }
-                )
-            }
-
-            // TYPING SECTION
-            item {
-                SectionHeader(
-                    title = "Typing",
-                    icon = Icons.Default.TouchApp
-                )
-            }
-
-            item {
-                SettingsCard {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        SwitchSetting(
-                            icon = Icons.Default.Vibration,
-                            title = "Haptic Feedback",
-                            description = "Vibrate on key press",
-                            checked = isHapticEnabled,
-                            onCheckedChange = {
-                                try {
-                                    viewModel.setHapticFeedback(it)
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Error toggling haptic feedback")
-                                }
-                            }
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Divider()
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        SwitchSetting(
-                            icon = Icons.Default.Gesture,
-                            title = "Swipe Typing",
-                            description = "Type by swiping across letters",
-                            checked = isSwipeEnabled,
-                            onCheckedChange = {
-                                try {
-                                    viewModel.setSwipeTyping(it)
-                                } catch (e: Exception) {
-                                    Timber.e(e, "Error toggling swipe typing")
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-
-            // SECURITY SECTION
-            item {
-                SectionHeader(
-                    title = "Security & Privacy",
-                    icon = Icons.Default.Security
-                )
-            }
-
-            item {
-                SettingsCard {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        SecurityInfoItem(
-                            icon = Icons.Default.Lock,
-                            title = "Password Protection",
-                            description = "Clipboard and swipe disabled in password fields"
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        SecurityInfoItem(
-                            icon = Icons.Default.Shield,
-                            title = "Screenshot Prevention",
-                            description = "Screen capture blocked for sensitive inputs"
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        SecurityInfoItem(
-                            icon = Icons.Default.History,
-                            title = "No Password Logging",
-                            description = "Password input never saved to history"
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        SecurityInfoItem(
-                            icon = Icons.Default.NoAccounts,
-                            title = "No Data Collection",
-                            description = "Your typing data stays on your device"
-                        )
-                    }
-                }
-            }
-
-            // CLIPBOARD SECTION
-            item {
-                SectionHeader(
-                    title = "Clipboard",
-                    icon = Icons.Default.ContentPaste
-                )
-            }
-
-            item {
-                SettingsCard {
-                    Column(modifier = Modifier.padding(16.dp)) {
-    val isClipboardEnabled by viewModel.isClipboardEnabled.collectAsState(initial = true)
-    val isBlockSensitive by viewModel.isBlockSensitive.collectAsState(initial = true)
-    val autoDeleteDays by viewModel.autoDeleteDays.collectAsState(initial = 30)
-    val maxClipboardItems by viewModel.maxClipboardItems.collectAsState(initial = 500)
-    val giphyApiKey by viewModel.giphyApiKey.collectAsState(initial = "")
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        item {
-            SectionHeader(
-                title = "General",
-                icon = Icons.Default.Tune
-            )
-        }
-        item {
-            SettingsCard {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    SwitchSetting(
-                        icon = Icons.Default.DarkMode,
-                        title = "Dark Mode",
-                        description = "Enable dark theme",
-                        checked = isDarkMode,
-                        onCheckedChange = { viewModel.setDarkMode(it) }
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Divider()
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SwitchSetting(
-                        icon = Icons.Default.Gesture,
-                        title = "Swipe Typing",
-                        description = "Enable swipe to type",
-                        checked = isSwipeEnabled,
-                        onCheckedChange = { viewModel.setSwipeTyping(it) }
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Divider()
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SwitchSetting(
-                        icon = Icons.Default.Vibration,
-                        title = "Haptic Feedback",
-                        description = "Vibrate on keypress",
-                        checked = isHapticEnabled,
-                        onCheckedChange = { viewModel.setHapticFeedback(it) }
-                    )
-                }
-            }
-        }
-
-        item {
-            SectionHeader(
-                title = "Privacy & Data",
-                icon = Icons.Default.PrivacyTip
-            )
-        }
-
-        item {
-            SettingsCard {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    SwitchSetting(
-                        icon = Icons.Default.ContentPaste,
-                        title = "Clipboard History",
-                        description = "Save clipboard entries for quick access",
-                        checked = isClipboardEnabled,
-                        onCheckedChange = { viewModel.setClipboardEnabled(it) }
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Divider()
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    SwitchSetting(
-                        icon = Icons.Default.Block,
-                        title = "Block Sensitive Content",
-                        description = "Don't save passwords, OTPs, or credit cards",
-                        checked = isBlockSensitive,
-                        onCheckedChange = { viewModel.setBlockSensitiveContent(it) }
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Divider()
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Auto-delete slider
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.DeleteSweep,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = "Auto-Delete After",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        text = "$autoDeleteDays days",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Slider(
-                            value = autoDeleteDays.toFloat(),
-                            onValueChange = { viewModel.setAutoDeleteDays(it.toInt()) },
-                            valueRange = 1f..90f,
-                            steps = 89,
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Divider()
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Max items slider
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "Clipboard History",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    "Saves recent text for quick access",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Button(
-                                onClick = {
-                                    try {
-                                        viewModel.clearClipboardHistory()
-                                    } catch (e: Exception) {
-                                        Timber.e(e, "Error clearing clipboard")
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                            ) {
-                                Text("Clear All")
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ABOUT SECTION
-            item {
-                SectionHeader(
-                    title = "About",
-                    icon = Icons.Default.Info
-                )
-            }
-
-            item {
-                SettingsCard {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Keyboard,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "NextGen Keyboard",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Version 1.0.0",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "Advanced keyboard with 10 layouts, swipe typing, clipboard management, and enterprise-grade security",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                    }
-                }
-            }
-
-            item { Spacer(modifier = Modifier.height(16.dp)) }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Storage,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = "Maximum Items",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        text = "$maxClipboardItems items",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Slider(
-                            value = maxClipboardItems.toFloat(),
-                            onValueChange = { viewModel.setMaxClipboardItems(it.toInt()) },
-                            valueRange = 50f..2000f,
-                            steps = 39,
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                    }
-                }
-            }
-        }
-
-        item {
-            SectionHeader(
-                title = "Data Management",
-                icon = Icons.Default.CleaningServices
-            )
-        }
-
-        item {
-            SettingsCard {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { viewModel.performManualCleanup() }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DeleteSweep,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Clean Up Now",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = "Remove old and excess clipboard items",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
-
-        item {
-            SectionHeader(
-                title = "Integrations",
-                icon = Icons.Default.Power
-            )
-        }
-
-        item {
-            SettingsCard {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    OutlinedTextField(
-                        value = giphyApiKey,
-                        onValueChange = { viewModel.setGiphyApiKey(it) },
-                        label = { Text("Giphy API Key") },
-                        placeholder = { Text("Enter your Giphy API key") },
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // ================== ERROR MESSAGE ==================
+                if (errorMessage != null) {
+                    Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.Gif, contentDescription = null) }
-                    )
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = errorMessage ?: "",
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(onClick = { viewModel.clearError() }) {
+                                Icon(
+                                    imageVector = Icons.Filled.Clear,
+                                    contentDescription = "Dismiss",
+                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // ================== SUCCESS MESSAGE ==================
+                if (clearSuccess) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "Clipboard cleared successfully",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+
+                // ================== LANGUAGE SETTINGS ==================
+                SettingsSection(title = "Language & Keyboard") {
+                    LanguageSettingsCard(viewModel = viewModel)
+                }
+
+                // ================== CLIPBOARD MANAGEMENT ==================
+                SettingsSection(title = "Clipboard Management") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { showClearDialog = true },
+                            enabled = !isLoading,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            } else {
+                                Text("Clear All Clips")
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = { viewModel.clearUnpinnedClips() },
+                            enabled = !isLoading,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Clear Unpinned Only")
+                        }
+
+                        Text(
+                            text = "Total clips: ${pinnedClips.size + recentClips.size}",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+
+                // ================== CLIPBOARD HISTORY ==================
+                if (pinnedClips.isNotEmpty() || recentClips.isNotEmpty()) {
+                    SettingsSection(title = "Clipboard History") {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (pinnedClips.isNotEmpty()) {
+                                Text(
+                                    text = "Pinned (${pinnedClips.size})",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                                pinnedClips.forEach { clip ->
+                                    ClipboardItemRow(
+                                        text = clip.content.take(50),
+                                        isPinned = true
+                                    )
+                                }
+                            }
+
+                            if (recentClips.isNotEmpty()) {
+                                Text(
+                                    text = "Recent (${recentClips.size})",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                                recentClips.take(5).forEach { clip ->
+                                    ClipboardItemRow(
+                                        text = clip.content.take(50),
+                                        isPinned = false
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
+
+    // ================== CLEAR CONFIRMATION DIALOG ==================
+    if (showClearDialog) {
+        AlertDialog(
+            title = { Text("Clear Clipboard?") },
+            text = { Text("This will delete all clipboard history. This action cannot be undone.") },
+            onDismissRequest = { showClearDialog = false },
+            confirmButton = {
+                Button(onClick = {
+                    viewModel.clearClipboardHistory()
+                    showClearDialog = false
+                }) {
+                    Text("Clear All")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showClearDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
+/**
+ * Settings Section with title and content
+ */
 @Composable
-fun SectionHeader(
+private fun SettingsSection(
     title: String,
-    icon: ImageVector
+    content: @Composable () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary
-fun SectionHeader(title: String, icon: ImageVector) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-    ) {
-        Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
+            modifier = Modifier.padding(bottom = 8.dp)
         )
-    }
-}
-
-@Composable
-fun SettingsCard(
-    content: @Composable () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-fun SettingsCard(content: @Composable () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        content()
-    }
-}
-
-@Composable
-fun ThemeSwitchSetting(
-    isDarkMode: Boolean,
-    onThemeChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = if (isDarkMode) Icons.Default.DarkMode else Icons.Default.LightMode,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(
-                    text = "Dark Mode",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = if (isDarkMode) "Currently enabled" else "Currently disabled",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        Switch(
-            checked = isDarkMode,
-            onCheckedChange = onThemeChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.primary,
-                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
-            )
-        )
-    }
-}
-
-@Composable
-fun SwitchSetting(
-    icon: ImageVector,
-    title: String,
-    description: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = RoundedCornerShape(8.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Box(modifier = Modifier.padding(12.dp)) {
+                content()
             }
         }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.primary,
-                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
-            )
-        )
     }
 }
 
+/**
+ * Language Settings Card
+ */
 @Composable
-fun LayoutSelectionCard(
-    selectedLayout: String,
-    onLayoutSelected: (String) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val allLayouts = KeyboardLayout.getAllLayouts()
+private fun LanguageSettingsCard(viewModel: SettingsViewModel) {
+    val languages = listOf(
+        "English (US)" to "en_US",
+        "Español" to "es_ES",
+        "Français" to "fr_FR",
+        "Deutsch" to "de_DE",
+        "العربية" to "ar_SA",
+        "हिन्दी" to "hi_IN",
+        "中文" to "zh_CN",
+        "日本語" to "ja_JP",
+        "Русский" to "ru_RU"
+    )
 
-    SettingsCard {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { expanded = !expanded },
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+    var selectedLanguage by remember { mutableStateOf(viewModel.getKeyboardLanguage()) }
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Keyboard Language",
+            style = MaterialTheme.typography.labelSmall
+        )
+
+        Box(modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = { expanded = true },
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Current Layout",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        selectedLayout,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                Icon(
-                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = "Expand",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                Text(
+                    text = selectedLanguage.ifEmpty { "Select Language" },
+                    modifier = Modifier.weight(1f)
                 )
             }
 
-            if (expanded) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Divider()
-                Spacer(modifier = Modifier.height(8.dp))
-
-                allLayouts.forEach { layout ->
-                    LayoutOption(
-                        layoutName = layout.name,
-                        isSelected = selectedLayout == layout.name,
-                        description = getLayoutDescription(layout.name),
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.fillMaxWidth(0.9f)
+            ) {
+                languages.forEach { (name, code) ->
+                    DropdownMenuItem(
+                        text = { Text(name) },
                         onClick = {
-                            onLayoutSelected(layout.name)
+                            selectedLanguage = code
+                            viewModel.setKeyboardLanguage(code)
                             expanded = false
+                            Timber.d("Language changed to: $name ($code)")
                         }
                     )
-                    if (layout != allLayouts.last()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
                 }
             }
         }
     }
 }
 
+/**
+ * Clipboard Item Row
+ */
 @Composable
-fun LayoutOption(
-    layoutName: String,
-    isSelected: Boolean,
-    description: String,
-    onClick: () -> Unit
+private fun ClipboardItemRow(
+    text: String,
+    isPinned: Boolean
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surface
-            )
-            .clickable(onClick = onClick)
-            .padding(12.dp),
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        RadioButton(
-            selected = isSelected,
-            onClick = onClick,
-            colors = RadioButtonDefaults.colors(
-                selectedColor = MaterialTheme.colorScheme.primary
-            )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f),
+            maxLines = 1
         )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = layoutName,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        if (isPinned) {
+            Surface(
+                color = MaterialTheme.colorScheme.primary,
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    text = "📌",
+                    modifier = Modifier.padding(4.dp),
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
         }
-        if (isSelected) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = "Selected",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun SecurityInfoItem(
-    icon: ImageVector,
-    title: String,
-    description: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-fun getLayoutDescription(layoutName: String): String {
-    return when (layoutName) {
-        "QWERTY" -> "Standard keyboard layout - familiar and widely used"
-        "Dvorak" -> "Ergonomic layout - reduces finger movement"
-        "Colemak" -> "Modern efficient layout - optimized for English"
-        "Numeric" -> "Numbers and symbols - ideal for data entry"
-        "Symbol" -> "Programming symbols - perfect for developers"
-        "Emoji" -> "Express yourself - quick emoji access"
-        "Phone" -> "Dialpad style - phone number entry"
-        "Gaming" -> "WASD controls - optimized for gaming"
-        "Minimal" -> "Distraction-free - clean and simple"
-        "Accessible" -> "Large keys - easier to read and tap"
-        else -> "Custom keyboard layout"
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
-            Text(text = description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }

@@ -2,207 +2,165 @@ package com.aktarjabed.nextgenkeyboard.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aktarjabed.nextgenkeyboard.repository.ClipboardRepository
-import com.aktarjabed.nextgenkeyboard.repository.PreferencesRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import timber.log.Timber
-import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
-import com.google.firebase.crashlytics.FirebaseCrashlytics
 
+/**
+ * ViewModel for Settings Screen
+ * Manages clipboard history, preferences, and multi-language settings
+ */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val preferencesRepository: PreferencesRepository,
-    private val clipboardRepository: ClipboardRepository
+    private val clipboardRepository: ClipboardRepository,
+    private val preferencesRepository: PreferencesRepository
 ) : ViewModel() {
 
-    // Existing preferences
-    val isDarkMode: StateFlow<Boolean> = preferencesRepository.isDarkMode
-    val selectedLayout: StateFlow<String> = preferencesRepository.selectedLayout
-    val isHapticEnabled: StateFlow<Boolean> = preferencesRepository.isHapticFeedbackEnabled
-    val isSwipeEnabled: StateFlow<Boolean> = preferencesRepository.isSwipeTypingEnabled
+    // UI State
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    // ✅ NEW: Privacy preferences
-    val isClipboardEnabled: StateFlow<Boolean> = preferencesRepository.isClipboardEnabled
-    val isBlockSensitive: StateFlow<Boolean> = preferencesRepository.isBlockSensitiveContent
-    val autoDeleteDays: StateFlow<Int> = preferencesRepository.autoDeleteDays
-    val maxClipboardItems: StateFlow<Int> = preferencesRepository.maxClipboardItems
-    val isCrashReportingEnabled: StateFlow<Boolean> = preferencesRepository.isCrashReportingEnabled
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    // ✅ NEW: Giphy API Key
-    val giphyApiKey: StateFlow<String> = preferencesRepository.giphyApiKey
+    private val _clearSuccess = MutableStateFlow(false)
+    val clearSuccess: StateFlow<Boolean> = _clearSuccess.asStateFlow()
 
-    // ✅ NEW: UI state for operations
-    private val _cleanupInProgress = MutableStateFlow(false)
-    val cleanupInProgress = _cleanupInProgress.asStateFlow()
+    // Settings State
+    val pinnedClips = clipboardRepository.getPinnedClips()
+    val recentClips = clipboardRepository.getRecentClips()
 
-    private val _cleanupResult = MutableStateFlow<String?>(null)
-    val cleanupResult = _cleanupResult.asStateFlow()
+    // ================== CLIPBOARD MANAGEMENT ==================
 
-    fun setDarkMode(enabled: Boolean) {
-        viewModelScope.launch {
-            try {
-                preferencesRepository.setDarkMode(enabled)
-                Timber.d("✅ Dark mode ${if (enabled) "enabled" else "disabled"}")
-            } catch (e: Exception) {
-                Timber.e(e, "Error setting dark mode")
-            }
-        }
-    }
-
-    fun setLayout(layoutName: String) {
-        viewModelScope.launch {
-            try {
-                preferencesRepository.setSelectedLayout(layoutName)
-                Timber.d("✅ Layout changed to: $layoutName")
-            } catch (e: Exception) {
-                Timber.e(e, "Error setting layout")
-            }
-        }
-    }
-
-    fun setHapticFeedback(enabled: Boolean) {
-        viewModelScope.launch {
-            try {
-                preferencesRepository.setHapticFeedback(enabled)
-                Timber.d("✅ Haptic feedback ${if (enabled) "enabled" else "disabled"}")
-            } catch (e: Exception) {
-                Timber.e(e, "Error setting haptic feedback")
-            }
-        }
-    }
-
-    fun setSwipeTyping(enabled: Boolean) {
-        viewModelScope.launch {
-            try {
-                preferencesRepository.setSwipeTyping(enabled)
-                Timber.d("✅ Swipe typing ${if (enabled) "enabled" else "disabled"}")
-            } catch (e: Exception) {
-                Timber.e(e, "Error setting swipe typing")
-            }
-        }
-    }
-
+    /**
+     * Clear all clipboard history
+     * Called from Settings UI when user confirms full clear
+     */
     fun clearClipboardHistory() {
         viewModelScope.launch {
             try {
-                clipboardRepository.clearAllClips()
-                Timber.d("✅ Clipboard history cleared")
-            } catch (e: Exception) {
-                Timber.e(e, "Error clearing clipboard")
-    // ✅ NEW: Privacy setters
-    fun setClipboardEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            try {
-                preferencesRepository.setClipboardEnabled(enabled)
-                Timber.d("✅ Clipboard ${if (enabled) "enabled" else "disabled"}")
-            } catch (e: Exception) {
-                Timber.e(e, "Error setting clipboard enabled")
-            }
-        }
-    }
+                _isLoading.value = true
+                Timber.d("Clearing all clipboard history")
 
-    fun setBlockSensitiveContent(enabled: Boolean) {
-        viewModelScope.launch {
-            try {
-                preferencesRepository.setBlockSensitiveContent(enabled)
-                Timber.d("✅ Block sensitive content ${if (enabled) "enabled" else "disabled"}")
-            } catch (e: Exception) {
-                Timber.e(e, "Error setting block sensitive content")
-            }
-        }
-    }
-
-    fun setAutoDeleteDays(days: Int) {
-        viewModelScope.launch {
-            try {
-                preferencesRepository.setAutoDeleteDays(days)
-                Timber.d("✅ Auto-delete set to $days days")
-            } catch (e: Exception) {
-                Timber.e(e, "Error setting auto-delete days")
-            }
-        }
-    }
-
-    fun setMaxClipboardItems(count: Int) {
-        viewModelScope.launch {
-            try {
-                preferencesRepository.setMaxClipboardItems(count)
-                Timber.d("✅ Max clipboard items set to $count")
-            } catch (e: Exception) {
-                Timber.e(e, "Error setting max clipboard items")
-            }
-        }
-    }
-
-    fun setCrashReportingEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            try {
-                preferencesRepository.setCrashReportingEnabled(enabled)
-                // Apply immediately
-                FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(enabled)
-                Timber.d("✅ Crash reporting ${if (enabled) "enabled" else "disabled"}")
-            } catch (e: Exception) {
-                Timber.e(e, "Error setting crash reporting")
-            }
-        }
-    }
-
-    fun clearClipboardHistory() {
-        viewModelScope.launch {
-            try {
-                _cleanupInProgress.value = true
-                clipboardRepository.clearAllClips()
-                _cleanupResult.value = "Clipboard history cleared successfully"
-                Timber.d("✅ Clipboard history cleared")
-            } catch (e: Exception) {
-                Timber.e(e, "Error clearing clipboard")
-                _cleanupResult.value = "Error clearing clipboard: ${e.message}"
+                val result = clipboardRepository.clearAllClips()
+                result.onSuccess {
+                    Timber.d("Successfully cleared all clips")
+                    _clearSuccess.value = true
+                    // Auto-reset success flag after 2 seconds
+                    kotlinx.coroutines.delay(2000)
+                    _clearSuccess.value = false
+                }
+                result.onFailure { exception ->
+                    Timber.e(exception, "Failed to clear clipboard history")
+                    _errorMessage.value = "Failed to clear clipboard: ${exception.message}"
+                }
             } finally {
-                _cleanupInProgress.value = false
+                _isLoading.value = false
             }
         }
     }
 
-    // ✅ NEW: Manual cleanup
-    fun performManualCleanup() {
+    /**
+     * Clear only unpinned clips
+     * Preserves pinned/favorite clips
+     */
+    fun clearUnpinnedClips() {
         viewModelScope.launch {
             try {
-                _cleanupInProgress.value = true
-                clipboardRepository.performManualCleanup()
-                _cleanupResult.value = "Cleanup completed successfully"
-                Timber.d("✅ Manual cleanup completed")
-            } catch (e: Exception) {
-                Timber.e(e, "Error performing cleanup")
-                _cleanupResult.value = "Error during cleanup: ${e.message}"
+                _isLoading.value = true
+                Timber.d("Clearing unpinned clipboard items")
+
+                val result = clipboardRepository.clearUnpinnedClips()
+                result.onSuccess {
+                    Timber.d("Successfully cleared unpinned clips")
+                    _clearSuccess.value = true
+                    kotlinx.coroutines.delay(2000)
+                    _clearSuccess.value = false
+                }
+                result.onFailure { exception ->
+                    Timber.e(exception, "Failed to clear unpinned clips")
+                    _errorMessage.value = "Failed to clear: ${exception.message}"
+                }
             } finally {
-                _cleanupInProgress.value = false
+                _isLoading.value = false
             }
         }
     }
 
-    fun clearCleanupResult() {
-        _cleanupResult.value = null
-    }
-
-    fun setGiphyApiKey(apiKey: String) {
+    /**
+     * Delete a specific clipboard item
+     */
+    fun deleteClipboardItem(clipId: Long) {
         viewModelScope.launch {
             try {
-                preferencesRepository.setGiphyApiKey(apiKey)
-                Timber.d("✅ Giphy API key updated")
+                Timber.d("Deleting clipboard item: $clipId")
+                // Note: Actual Clip object needed; stub for now
+                // In real impl, fetch clip by ID first, then delete
             } catch (e: Exception) {
-                Timber.e(e, "Error setting Giphy API key")
+                Timber.e(e, "Error deleting clipboard item")
+                _errorMessage.value = "Failed to delete item: ${e.message}"
             }
         }
+    }
+
+    // ================== PREFERENCES MANAGEMENT ==================
+
+    /**
+     * Get current keyboard language preference
+     */
+    fun getKeyboardLanguage(): String {
+        return preferencesRepository.getKeyboardLanguage()
+    }
+
+    /**
+     * Set keyboard language preference
+     */
+    fun setKeyboardLanguage(language: String) {
+        viewModelScope.launch {
+            try {
+                Timber.d("Setting keyboard language to: $language")
+                preferencesRepository.setKeyboardLanguage(language)
+            } catch (e: Exception) {
+                Timber.e(e, "Error setting keyboard language")
+                _errorMessage.value = "Failed to change language: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Get current theme preference
+     */
+    fun getThemePreference(): String {
+        return preferencesRepository.getThemePreference()
+    }
+
+    /**
+     * Set theme preference (light/dark/auto)
+     */
+    fun setThemePreference(theme: String) {
+        viewModelScope.launch {
+            try {
+                Timber.d("Setting theme to: $theme")
+                preferencesRepository.setThemePreference(theme)
+            } catch (e: Exception) {
+                Timber.e(e, "Error setting theme")
+                _errorMessage.value = "Failed to change theme: ${e.message}"
+            }
+        }
+    }
+
+    // ================== ERROR HANDLING ==================
+
+    /**
+     * Clear error message
+     */
+    fun clearError() {
+        _errorMessage.value = null
     }
 }
