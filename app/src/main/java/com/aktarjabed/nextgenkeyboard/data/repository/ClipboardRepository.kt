@@ -31,6 +31,9 @@ class ClipboardRepository @Inject constructor(
         private const val AUTO_DELETE_DAYS = 30
     }
 
+    fun getPinnedClips(): Flow<List<Clip>> = database.clipboardDao().getPinnedClips()
+
+    fun getRecentClips(): Flow<List<Clip>> = database.clipboardDao().getRecentClips()
     // ================== FLOW OPERATIONS ==================
 
     fun getPinnedClips(): Flow<List<Clip>> = database.clipboardDao().getPinnedClips()
@@ -49,6 +52,27 @@ class ClipboardRepository @Inject constructor(
         }
     }
 
+    // ✅ FIXED ISSUE 1: Smarter sensitivity filter used by saveClip
+    private fun isSensitiveContent(text: String): Boolean {
+        val sensitivePatterns = listOf(
+            "password", "token", "secret", "api_key", "private_key",
+            "credit_card", "ssn", "pin", "cvv", "bearer", "authorization"
+        )
+
+        // ✅ Check for sensitive keywords (primary filter)
+        val hasSensitiveKeyword = sensitivePatterns.any {
+            text.contains(it, ignoreCase = true)
+        }
+
+        // ✅ Secondary filter: very high entropy + length suggests encrypted/token
+        // Only reject if: contains 20+ chars AND mix of numbers/special chars
+        val isHighEntropy = text.length >= 20 &&
+                           text.any { it.isDigit() } &&
+                           text.any { !it.isLetterOrDigit() && it != ' ' }
+
+        return hasSensitiveKeyword || isHighEntropy
+    }
+
     // ================== SAVE OPERATIONS ==================
 
     /**
@@ -61,6 +85,8 @@ class ClipboardRepository @Inject constructor(
                 return Result.failure(IllegalArgumentException("Clip content cannot be blank"))
             }
 
+            // Sensitive data checks
+            if (isSensitiveContent(content)) {
             // Check for sensitive data
             if (isSensitiveContent(content)) {
             // Sensitive data checks
@@ -240,6 +266,62 @@ class ClipboardRepository @Inject constructor(
         }
     }
 
+    // ✅ FIXED ISSUE 3: Safe null handling
+    suspend fun getClipboardContent(): String? = withContext(Dispatchers.IO) {
+        try {
+            val clipboardManager = clipboardManager ?: run {
+                Timber.w("ClipboardManager not available")
+                return@withContext null
+            }
+
+            val primaryClip = clipboardManager.primaryClip
+            if (primaryClip == null || primaryClip.itemCount == 0) {
+                Timber.d("No clipboard content available")
+                return@withContext null
+            }
+
+            val text = primaryClip.getItemAt(0)?.text?.toString()
+            if (text.isNullOrBlank()) {
+                Timber.d("Clipboard content is empty")
+                return@withContext null
+            }
+
+            text
+        } catch (e: Exception) {
+            Timber.e(e, "Error accessing clipboard content")
+            null
+        }
+    }
+
+    // ✅ NEW: Safe copy to clipboard
+    suspend fun copyToClipboard(text: String, label: String = "Copied"): Boolean =
+        withContext(Dispatchers.IO) {
+            return@withContext try {
+                val manager = clipboardManager ?: return@withContext false
+                val clip = android.content.ClipData.newPlainText(label, text)
+                manager.setPrimaryClip(clip)
+                Timber.d("Copied to clipboard: $label")
+                true
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to copy to clipboard")
+                false
+            }
+        }
+
+    // ✅ NEW: Safe paste from clipboard
+    suspend fun pasteFromClipboard(): String? = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val manager = clipboardManager ?: return@withContext null
+            val primaryClip = manager.primaryClip ?: return@withContext null
+
+            if (primaryClip.itemCount == 0) return@withContext null
+
+            val text = primaryClip.getItemAt(0)?.text?.toString()
+            if (text.isNullOrBlank()) return@withContext null
+
+            if (isSensitiveContent(text)) {
+                Timber.w("Detected sensitive content in clipboard - blocking paste")
+                return@withContext null
     /**
      * Manual cleanup operation (called by tests/UI)
      */
