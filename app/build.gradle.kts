@@ -15,29 +15,10 @@ android {
 
     defaultConfig {
         applicationId = "com.aktarjabed.nextgenkeyboard"
-    compileSdk = 36  // ✅ UPDATED: 34 → 36
-
-    defaultConfig {
-        applicationId = "com.aktarjabed.nextgenkeyboard"
-        minSdk = 30          // ✅ UPDATED: 26 → 30
-        targetSdk = 36       // ✅ UPDATED: 34 → 36
-    compileSdk = 36
-
-    defaultConfig {
-        applicationId = "com.aktarjabed.nextgenkeyboard"
-    compileSdk = 36  // ✅ UPDATED: 34 → 36 (Android 16 API 36)
-
-    defaultConfig {
-        applicationId = "com.aktarjabed.nextgenkeyboard"
-        minSdk = 30          // ✅ UPDATED: 26 → 30 (Android 11+)
-        targetSdk = 36       // ✅ UPDATED: 34 → 36 (matches compileSdk)
-    compileSdk = 36
-
-    defaultConfig {
-        applicationId = "com.aktarjabed.nextgenkeyboard"
         minSdk = 30
         targetSdk = 36
-        versionCode = 2
+
+        versionCode = 1
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -58,17 +39,18 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
+            isMinifyEnabled = false
         }
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
         freeCompilerArgs += "-opt-in=kotlinx.serialization.ExperimentalSerializationApi"
     }
 
@@ -78,16 +60,19 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.10"  // ✅ KEPT: Compatible with Kotlin 1.9.22
+        kotlinCompilerExtensionVersion = "1.5.14"
     }
 
     packaging {
         resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += setOf(
+                "META-INF/LICENSE*",
+                "META-INF/AL2.0",
+                "META-INF/LGPL2.1"
+            )
         }
     }
 
-    // ✅ ADDED: KSP configuration (moved from defaultConfig)
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
     }
@@ -95,7 +80,6 @@ android {
 
 dependencies {
     // Core Android
-    implementation("androidx.core:core-ktx:1.15.0")  // ✅ UPDATED: 1.13.1 → 1.15.0
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
     implementation("androidx.activity:activity-compose:1.9.2")
@@ -105,19 +89,6 @@ dependencies {
 
     // Compose
     implementation(platform("androidx.compose:compose-bom:2025.10.01"))
-    // Compose
-    implementation(platform("androidx.compose:compose-bom:2025.10.01"))
-    // Compose
-    implementation(platform("androidx.compose:compose-bom:2025.10.01"))
-    implementation("androidx.core:core-ktx:1.15.0")  // ✅ UPDATED: 1.13.1 → 1.15.0 (safe for Kotlin 1.9.x)
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
-    implementation("androidx.activity:activity-compose:1.9.2")
-
-    // ✅ ADDED: InputMethod (required for NextGenKeyboardService)
-    implementation("androidx.inputmethod:inputmethod:1.0.0-alpha01")
-
-    // Compose
-    implementation(platform("androidx.compose:compose-bom:2025.10.01"))  // ✅ UPDATED: 2024.09.02 → 2025.10.01
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -167,9 +138,6 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.10.01"))
-    androidTestImplementation(platform("androidx.compose:compose-bom:2025.10.01"))  // ✅ UPDATED
-    androidTestImplementation(platform("androidx.compose:compose-bom:2025.10.01"))
-    androidTestImplementation(platform("androidx.compose:compose-bom:2025.10.01"))  // ✅ UPDATED: Match main BOM
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
