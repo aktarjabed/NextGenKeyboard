@@ -10,162 +10,174 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "keyboard_preferences")
-
+/**
+ * Repository for managing user preferences using DataStore
+ * Stores: keyboard language, theme, clipboard settings, etc.
+ */
 @Singleton
 class PreferencesRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private object PreferencesKeys {
-        val DARK_MODE = booleanPreferencesKey("dark_mode")
-        val SELECTED_LAYOUT = stringPreferencesKey("selected_layout")
-        val HAPTIC_FEEDBACK = booleanPreferencesKey("haptic_feedback")
-        val SWIPE_TYPING = booleanPreferencesKey("swipe_typing")
 
-        // ✅ NEW: Privacy settings
-        val CLIPBOARD_ENABLED = booleanPreferencesKey("clipboard_enabled")
-        val BLOCK_SENSITIVE_CONTENT = booleanPreferencesKey("block_sensitive_content")
-        val AUTO_DELETE_DAYS = intPreferencesKey("auto_delete_days")
-        val MAX_CLIPBOARD_ITEMS = intPreferencesKey("max_clipboard_items")
-        val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled") // Opt-in
+    private val dataStore: DataStore<Preferences> = context.preferencesDataStore
 
-        // ✅ NEW: Language and Theme settings
-        val CURRENT_LANGUAGE = stringPreferencesKey("current_language")
-        val ENABLED_LANGUAGES = stringPreferencesKey("enabled_languages")
-        val CURRENT_THEME = stringPreferencesKey("current_theme")
+    companion object {
+        private const val KEYBOARD_LANGUAGE_KEY = "keyboard_language"
+        private const val THEME_PREFERENCE_KEY = "theme_preference"
+        private const val CLIPBOARD_AUTO_SAVE_KEY = "clipboard_auto_save"
+        private const val IS_DARK_MODE_KEY = "is_dark_mode"
+        private const val SELECTED_LAYOUT_KEY = "selected_layout"
+        private const val HAPTIC_FEEDBACK_ENABLED_KEY = "haptic_feedback_enabled"
+        private const val SWIPE_TYPING_ENABLED_KEY = "swipe_typing_enabled"
 
-        // ✅ NEW: Giphy API Key
-        val GIPHY_API_KEY = stringPreferencesKey("giphy_api_key")
+        private val KEYBOARD_LANGUAGE = stringPreferencesKey(KEYBOARD_LANGUAGE_KEY)
+        private val THEME_PREFERENCE = stringPreferencesKey(THEME_PREFERENCE_KEY)
+        private val CLIPBOARD_AUTO_SAVE = stringPreferencesKey(CLIPBOARD_AUTO_SAVE_KEY)
+        private val IS_DARK_MODE = booleanPreferencesKey(IS_DARK_MODE_KEY)
+        private val SELECTED_LAYOUT = stringPreferencesKey(SELECTED_LAYOUT_KEY)
+        private val HAPTIC_FEEDBACK_ENABLED = booleanPreferencesKey(HAPTIC_FEEDBACK_ENABLED_KEY)
+        private val SWIPE_TYPING_ENABLED = booleanPreferencesKey(SWIPE_TYPING_ENABLED_KEY)
+
+        // Defaults
+        private const val DEFAULT_LANGUAGE = "en_US"
+        private const val DEFAULT_LAYOUT = "qwerty"
+        private const val DEFAULT_THEME = "auto"
     }
 
-    val isDarkMode: Flow<Boolean> = context.dataStore.data
-        .map { preferences -> preferences[PreferencesKeys.DARK_MODE] ?: true }
+    // ================== GENERAL PREFERENCES ==================
 
-    val selectedLayout: Flow<String> = context.dataStore.data
-        .map { preferences -> preferences[PreferencesKeys.SELECTED_LAYOUT] ?: "QWERTY" }
+    val isDarkMode: Flow<Boolean> = dataStore.data.map { it[IS_DARK_MODE] ?: true }
+    val selectedLayout: Flow<String> = dataStore.data.map { it[SELECTED_LAYOUT] ?: DEFAULT_LAYOUT }
+    val isHapticFeedbackEnabled: Flow<Boolean> = dataStore.data.map { it[HAPTIC_FEEDBACK_ENABLED] ?: true }
+    val isSwipeTypingEnabled: Flow<Boolean> = dataStore.data.map { it[SWIPE_TYPING_ENABLED] ?: true }
 
-    val isHapticFeedbackEnabled: Flow<Boolean> = context.dataStore.data
-        .map { preferences -> preferences[PreferencesKeys.HAPTIC_FEEDBACK] ?: true }
+    // ================== LANGUAGE PREFERENCES ==================
 
-    val isSwipeTypingEnabled: Flow<Boolean> = context.dataStore.data
-        .map { preferences -> preferences[PreferencesKeys.SWIPE_TYPING] ?: true }
+    /**
+     * Get current keyboard language flow
+     */
+    val keyboardLanguage: Flow<String> = dataStore.data.map { prefs ->
+        prefs[KEYBOARD_LANGUAGE] ?: DEFAULT_LANGUAGE
+    }
 
-    // ✅ NEW: Privacy preferences
-    val isClipboardEnabled: Flow<Boolean> = context.dataStore.data
-        .map { preferences -> preferences[PreferencesKeys.CLIPBOARD_ENABLED] ?: true }
-
-    val isBlockSensitiveContent: Flow<Boolean> = context.dataStore.data
-        .map { preferences -> preferences[PreferencesKeys.BLOCK_SENSITIVE_CONTENT] ?: true }
-
-    val autoDeleteDays: Flow<Int> = context.dataStore.data
-        .map { preferences -> preferences[PreferencesKeys.AUTO_DELETE_DAYS] ?: 30 }
-
-    val maxClipboardItems: Flow<Int> = context.dataStore.data
-        .map { preferences -> preferences[PreferencesKeys.MAX_CLIPBOARD_ITEMS] ?: 500 }
-
-    val isCrashReportingEnabled: Flow<Boolean> = context.dataStore.data
-        .map { preferences -> preferences[PreferencesKeys.CRASH_REPORTING_ENABLED] ?: false }
-
-    // ✅ NEW: Language and Theme flows
-    val currentLanguage: Flow<String> = context.dataStore.data
-        .map { preferences -> preferences[PreferencesKeys.CURRENT_LANGUAGE] ?: "en_US" }
-
-    val enabledLanguages: Flow<List<String>> = context.dataStore.data
-        .map { preferences ->
-            (preferences[PreferencesKeys.ENABLED_LANGUAGES] ?: "en_US")
-                .split(",")
-                .filter { it.isNotBlank() }
+    // Suspended getter to avoid blocking the main thread
+    suspend fun getKeyboardLanguage(): String {
+        return try {
+            keyboardLanguage.first()
+        } catch (e: Exception) {
+            Timber.e(e, "Error reading keyboard language")
+            DEFAULT_LANGUAGE
         }
+    }
 
-    val currentTheme: Flow<String> = context.dataStore.data
-        .map { preferences -> preferences[PreferencesKeys.CURRENT_THEME] ?: "dark_blue" }
+    /**
+     * Set keyboard language
+     */
+    suspend fun setKeyboardLanguage(language: String) {
+        safeEdit(KEYBOARD_LANGUAGE, language, "Language")
+    }
 
-    // ✅ NEW: Giphy API Key flow
-    val giphyApiKey: Flow<String> = context.dataStore.data
-        .map { preferences -> preferences[PreferencesKeys.GIPHY_API_KEY] ?: "" }
+    // ================== THEME PREFERENCES ==================
+
+    val themePreference: Flow<String> = dataStore.data.map { prefs ->
+        prefs[THEME_PREFERENCE] ?: DEFAULT_THEME
+    }
+
+    suspend fun getThemePreference(): String {
+        return try {
+            themePreference.first()
+        } catch (e: Exception) {
+            Timber.e(e, "Error reading theme preference")
+            DEFAULT_THEME
+        }
+    }
+
+    /**
+     * Set theme preference
+     */
+    suspend fun setThemePreference(theme: String) {
+        safeEdit(THEME_PREFERENCE, theme, "Theme")
+    }
 
     suspend fun setDarkMode(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.DARK_MODE] = enabled
-        }
+        safeEdit(IS_DARK_MODE, enabled, "Dark Mode")
     }
 
-    suspend fun setSelectedLayout(layoutName: String) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.SELECTED_LAYOUT] = layoutName
-        }
+    suspend fun setSelectedLayout(layout: String) {
+        safeEdit(SELECTED_LAYOUT, layout, "Layout")
     }
 
     suspend fun setHapticFeedback(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.HAPTIC_FEEDBACK] = enabled
-        }
+        safeEdit(HAPTIC_FEEDBACK_ENABLED, enabled, "Haptic Feedback")
     }
 
     suspend fun setSwipeTyping(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.SWIPE_TYPING] = enabled
-        }
+        safeEdit(SWIPE_TYPING_ENABLED, enabled, "Swipe Typing")
     }
 
-    // ✅ NEW: Privacy setters
-    suspend fun setClipboardEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.CLIPBOARD_ENABLED] = enabled
-        }
+
+    // ================== CLIPBOARD PREFERENCES ==================
+
+    // Privacy Keys
+    private val CLIPBOARD_ENABLED = booleanPreferencesKey("clipboard_enabled")
+    private val BLOCK_SENSITIVE_CONTENT = booleanPreferencesKey("block_sensitive_content")
+    private val AUTO_DELETE_DAYS = intPreferencesKey("auto_delete_days")
+    private val MAX_CLIPBOARD_ITEMS = intPreferencesKey("max_clipboard_items")
+    private val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
+    private val GIPHY_API_KEY = stringPreferencesKey("giphy_api_key")
+
+    // Privacy Flows
+    val isClipboardEnabled: Flow<Boolean> = dataStore.data.map { it[CLIPBOARD_ENABLED] ?: true }
+    val isBlockSensitiveContent: Flow<Boolean> = dataStore.data.map { it[BLOCK_SENSITIVE_CONTENT] ?: true }
+    val autoDeleteDays: Flow<Int> = dataStore.data.map { it[AUTO_DELETE_DAYS] ?: 30 }
+    val maxClipboardItems: Flow<Int> = dataStore.data.map { it[MAX_CLIPBOARD_ITEMS] ?: 50 }
+    val isCrashReportingEnabled: Flow<Boolean> = dataStore.data.map { it[CRASH_REPORTING_ENABLED] ?: false }
+    val giphyApiKey: Flow<String> = dataStore.data.map { it[GIPHY_API_KEY] ?: "" }
+
+    // Privacy Setters
+     suspend fun setClipboardEnabled(enabled: Boolean) {
+        safeEdit(CLIPBOARD_ENABLED, enabled, "Clipboard History")
     }
 
     suspend fun setBlockSensitiveContent(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.BLOCK_SENSITIVE_CONTENT] = enabled
-        }
+        safeEdit(BLOCK_SENSITIVE_CONTENT, enabled, "Block Sensitive Content")
     }
 
     suspend fun setAutoDeleteDays(days: Int) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.AUTO_DELETE_DAYS] = days.coerceIn(1, 365)
-        }
+        safeEdit(AUTO_DELETE_DAYS, days, "Auto Delete Days")
     }
 
     suspend fun setMaxClipboardItems(count: Int) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.MAX_CLIPBOARD_ITEMS] = count.coerceIn(50, 2000)
-        }
+        safeEdit(MAX_CLIPBOARD_ITEMS, count, "Max Clipboard Items")
     }
 
     suspend fun setCrashReportingEnabled(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.CRASH_REPORTING_ENABLED] = enabled
-        }
+        safeEdit(CRASH_REPORTING_ENABLED, enabled, "Crash Reporting")
     }
 
-    // ✅ NEW: Language and Theme setters
-    suspend fun setCurrentLanguage(languageCode: String) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.CURRENT_LANGUAGE] = languageCode
-        }
+    suspend fun setGiphyApiKey(key: String) {
+        safeEdit(GIPHY_API_KEY, key, "Giphy API Key")
     }
 
-    suspend fun setEnabledLanguages(languageCodes: List<String>) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.ENABLED_LANGUAGES] = languageCodes.joinToString(",")
-        }
-    }
-
-    suspend fun setCurrentTheme(themeName: String) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.CURRENT_THEME] = themeName
-        }
-    }
-
-    // ✅ NEW: Giphy API Key setter
-    suspend fun setGiphyApiKey(apiKey: String) {
-        context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.GIPHY_API_KEY] = apiKey
+    // Helper
+    private suspend fun <T> safeEdit(key: Preferences.Key<T>, value: T, name: String) {
+        try {
+            dataStore.edit { prefs ->
+                prefs[key] = value
+            }
+            Timber.d("Updated $name to: $value")
+        } catch (e: Exception) {
+            Timber.e(e, "Error updating $name")
         }
     }
 }
+
+private val Context.preferencesDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "nextgen_preferences"
+)

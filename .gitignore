@@ -1,4 +1,14 @@
-.gradle/
-build/
+# Android Studio
+.gradle
+/build
+/captures
+.DS_Store
+.idea
 local.properties
+
+# Log files
 *.log
+
+# Keystore files
+*.jks
+*.keystore
