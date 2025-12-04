@@ -23,6 +23,19 @@ import javax.inject.Singleton
 class PreferencesRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+    private object PreferencesKeys {
+        val DARK_MODE = booleanPreferencesKey("dark_mode")
+        val SELECTED_LAYOUT = stringPreferencesKey("selected_layout")
+        val HAPTIC_FEEDBACK = booleanPreferencesKey("haptic_feedback")
+        val SWIPE_TYPING = booleanPreferencesKey("swipe_typing")
+        val AUTOCORRECT_ENABLED = booleanPreferencesKey("autocorrect_enabled")
+
+        // ✅ NEW: Privacy settings
+        val CLIPBOARD_ENABLED = booleanPreferencesKey("clipboard_enabled")
+        val BLOCK_SENSITIVE_CONTENT = booleanPreferencesKey("block_sensitive_content")
+        val AUTO_DELETE_DAYS = intPreferencesKey("auto_delete_days")
+        val MAX_CLIPBOARD_ITEMS = intPreferencesKey("max_clipboard_items")
+        val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled") // Opt-in
 
     private val dataStore: DataStore<Preferences> = context.preferencesDataStore
 
@@ -59,6 +72,12 @@ class PreferencesRepository @Inject constructor(
     val keyboardLanguage: Flow<String> = dataStore.data.map { prefs ->
         prefs[KEYBOARD_LANGUAGE] ?: "en_US"
     }
+    val isAutocorrectEnabled: Flow<Boolean> = context.dataStore.data
+        .map { preferences -> preferences[PreferencesKeys.AUTOCORRECT_ENABLED] ?: true }
+
+    // ✅ NEW: Privacy preferences
+    val isClipboardEnabled: Flow<Boolean> = context.dataStore.data
+        .map { preferences -> preferences[PreferencesKeys.CLIPBOARD_ENABLED] ?: true }
 
     // Retained for compatibility with synchronous-like access patterns, but now using Flow internally
     // Note: To get a snapshot synchronously (blocking) is discouraged.
@@ -177,6 +196,17 @@ class PreferencesRepository @Inject constructor(
 
      suspend fun setClipboardEnabled(enabled: Boolean) {
         safeEdit(CLIPBOARD_ENABLED, enabled, "Clipboard History")
+    suspend fun setAutocorrectEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.AUTOCORRECT_ENABLED] = enabled
+        }
+    }
+
+    // ✅ NEW: Privacy setters
+    suspend fun setClipboardEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CLIPBOARD_ENABLED] = enabled
+        }
     }
 
     suspend fun setBlockSensitiveContent(enabled: Boolean) {

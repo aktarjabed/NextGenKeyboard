@@ -452,6 +452,7 @@ grep "中文" app/src/main/res/xml/method.xml && echo "✅ Chinese found" || ech
 ## 🔧 STEP 6: ClipboardRepository.kt - FIX SYNTAX ERRORS
 **File:** `app/src/main/java/com/aktarjabed/nextgenkeyboard/data/repository/ClipboardRepository.kt`
 **Task:** Fix syntax errors, refactor with interface + impl, and add missing cleanup methods.
+**Task:** Fix syntax errors, refactor with interface + impl
 **Time:** 8 min
 **Priority:** 🔴 CRITICAL - Build will fail without this
 
@@ -644,6 +645,8 @@ grep "isSensitiveData" app/src/main/java/com/aktarjabed/nextgenkeyboard/data/rep
 
 # Check for cleanup methods
 grep "fun clearAllClips" app/src/main/java/com/aktarjabed/nextgenkeyboard/data/repository/ClipboardRepository.kt && echo "✅ clearAllClips method" || echo "❌ MISSING"
+# Check for Timber logging
+grep "Timber\." app/src/main/java/com/aktarjabed/nextgenkeyboard/data/repository/ClipboardRepository.kt && echo "✅ Timber logging" || echo "❌ MISSING"
 
 # Check for duplicate methods
 grep -c "fun copy(" app/src/main/java/com/aktarjabed/nextgenkeyboard/data/repository/ClipboardRepository.kt | xargs -I {} bash -c 'if [ {} -eq 1 ]; then echo "✅ No duplicate methods"; else echo "❌ Found {} copy() methods"; fi'
