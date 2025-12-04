@@ -3,20 +3,14 @@ package com.aktarjabed.nextgenkeyboard.data.repository
 import android.content.Context
 import com.aktarjabed.nextgenkeyboard.data.db.ClipboardDatabase
 import com.aktarjabed.nextgenkeyboard.data.local.ClipboardDao
-import com.aktarjabed.nextgenkeyboard.data.model.Clip
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import org.mockito.Mock
-import org.mockito.Mockito.`when`
-import org.mockito.Mockito.any
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mock
 import org.mockito.Mockito.`when`
-import org.mockito.Mockito.doThrow
 import org.mockito.Mockito.verify
 import org.mockito.MockitoAnnotations
 
@@ -31,9 +25,6 @@ class ClipboardRepositoryTest {
     @Mock
     lateinit var clipboardDao: ClipboardDao
 
-    @Mock
-    lateinit var clipboardDao: ClipboardDao
-
     private lateinit var clipboardRepository: ClipboardRepository
 
     @Before
@@ -43,7 +34,6 @@ class ClipboardRepositoryTest {
         `when`(database.clipboardDao()).thenReturn(clipboardDao)
 
         clipboardRepository = ClipboardRepository(context, database)
-        clipboardRepository = ClipboardRepository(clipboardDao)
     }
 
     @Test
