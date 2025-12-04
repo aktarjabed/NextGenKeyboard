@@ -1,13 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<<<<<<< HEAD
-<<<<<<< HEAD
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
     android:settingsActivity="com.aktarjabed.nextgenkeyboard.ui.screens.SettingsActivity"
     android:supportsSwitchingToNextInputMethod="true">
-=======
-=======
->>>>>>> origin/feature/multi-language-support
-<input-method xmlns:android="http://schemas.android.com/apk/res/android">
+
     <subtype
         android:label="English (US)"
         android:imeSubtypeLocale="en_US"
@@ -44,8 +39,7 @@
         android:label="Русский"
         android:imeSubtypeLocale="ru_RU"
         android:imeSubtypeMode="keyboard" />
-<<<<<<< HEAD
->>>>>>> origin/feature/multi-language-support
-=======
->>>>>>> origin/feature/multi-language-support
+
 </input-method>
+
+
