@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+<<<<<<< HEAD
+<<<<<<< HEAD
     xmlns:tools="http://schemas.android.com/tools"
     package="com.aktarjabed.nextgenkeyboard">
 
@@ -16,6 +18,18 @@
     <uses-feature
         android:name="android.hardware.microphone"
         android:required="false" />
+=======
+=======
+>>>>>>> origin/feature/multi-language-support
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Permissions -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+<<<<<<< HEAD
+>>>>>>> origin/feature/multi-language-support
+=======
+>>>>>>> origin/feature/multi-language-support
 
     <application
         android:name=".NextGenKeyboardApp"
@@ -33,9 +47,17 @@
         <activity
             android:name=".ui.screens.MainActivity"
             android:exported="true"
+<<<<<<< HEAD
+<<<<<<< HEAD
             android:theme="@style/Theme.NextGenKeyboard"
             android:screenOrientation="portrait"
             android:configChanges="orientation|screenSize|keyboardHidden">
+=======
+            android:theme="@style/Theme.NextGenKeyboard">
+>>>>>>> origin/feature/multi-language-support
+=======
+            android:theme="@style/Theme.NextGenKeyboard">
+>>>>>>> origin/feature/multi-language-support
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -46,8 +68,16 @@
         <service
             android:name=".service.NextGenKeyboardService"
             android:exported="true"
+<<<<<<< HEAD
+<<<<<<< HEAD
             android:permission="android.permission.BIND_INPUT_METHOD"
             android:label="@string/keyboard_name">
+=======
+            android:permission="android.permission.BIND_INPUT_METHOD">
+>>>>>>> origin/feature/multi-language-support
+=======
+            android:permission="android.permission.BIND_INPUT_METHOD">
+>>>>>>> origin/feature/multi-language-support
             <intent-filter>
                 <action android:name="android.view.InputMethod" />
             </intent-filter>
@@ -55,6 +85,8 @@
                 android:name="android.view.im"
                 android:resource="@xml/method" />
         </service>
+<<<<<<< HEAD
+<<<<<<< HEAD
 
         <!-- Provider for secure file sharing -->
         <provider
@@ -69,3 +101,11 @@
 
     </application>
 </manifest>
+=======
+    </application>
+</manifest>
+>>>>>>> origin/feature/multi-language-support
+=======
+    </application>
+</manifest>
+>>>>>>> origin/feature/multi-language-support
