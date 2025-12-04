@@ -6,12 +6,14 @@ import android.text.InputType
 import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
 import com.aktarjabed.nextgenkeyboard.BuildConfig
+import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import com.aktarjabed.nextgenkeyboard.feature.autocorrect.AdvancedAutocorrectEngine
 import com.aktarjabed.nextgenkeyboard.feature.gif.GiphyManager
 import com.aktarjabed.nextgenkeyboard.feature.voice.VoiceInputManager
@@ -27,6 +29,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -36,6 +41,11 @@ class NextGenKeyboardService : InputMethodService() {
     @Inject
     lateinit var autocorrectEngine: AdvancedAutocorrectEngine
     @Inject
+    lateinit var preferencesRepository: PreferencesRepository
+    @Inject
+    lateinit var voiceInputManager: VoiceInputManager
+    @Inject
+    lateinit var giphyManager: GiphyManager
     lateinit var voiceInputManager: VoiceInputManager
     @Inject
     lateinit var giphyManager: GiphyManager
@@ -44,6 +54,13 @@ class NextGenKeyboardService : InputMethodService() {
 
     private var serviceScope: CoroutineScope? = null
     private var composeView: ComposeView? = null
+
+    private val _keyboardState = MutableStateFlow<KeyboardState>(KeyboardState.Main)
+    private val keyboardState = _keyboardState.asStateFlow()
+
+    private var useBasicKeyboard = false
+    private var isPasswordMode = false
+    private var currentPackageName: String? = null
     private var useBasicKeyboard = false
     private var isPasswordMode = false
 
@@ -61,6 +78,10 @@ class NextGenKeyboardService : InputMethodService() {
 
     private fun initializeComponents() {
         try {
+            viewModel = KeyboardViewModel(autocorrectEngine, preferencesRepository, giphyManager)
+
+            // Initialize Giphy with proper error handling
+            val giphyApiKey = getGiphyApiKey()
             val giphyApiKey = BuildConfig.GIPHY_API_KEY
             if (giphyApiKey.isNotEmpty()) {
                 giphyManager.initialize(giphyApiKey)
@@ -102,6 +123,17 @@ class NextGenKeyboardService : InputMethodService() {
         super.onStartInput(attribute, restarting)
 
         try {
+            currentPackageName = attribute?.packageName
+            val inputType = attribute?.inputType ?: 0
+
+            // Detect password fields
+            isPasswordMode = detectPasswordField(inputType, attribute)
+
+            // Apply security measures
+            applySecurityMode(isPasswordMode)
+
+            // Update ViewModel context
+            viewModel.onTextUpdated("") // Reset text context on new input
             val inputType = attribute?.inputType ?: 0
             isPasswordMode = detectPasswordField(inputType, attribute)
             applySecurityMode(isPasswordMode)
@@ -116,6 +148,11 @@ class NextGenKeyboardService : InputMethodService() {
         } catch (e: Exception) {
             Timber.e(e, "Error in onStartInput")
         }
+    }
+
+    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        _keyboardState.value = KeyboardState.Main
     }
 
     override fun onCreateInputView(): View {
@@ -146,6 +183,85 @@ class NextGenKeyboardService : InputMethodService() {
             isPasswordMode = false
             currentPackageName = null
 
+            // Clear security flags
+            window?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            Timber.d("Input session finished - Security reset")
+        } catch (e: Exception) {
+            Timber.e(e, "Error in onFinishInput")
+        }
+    }
+
+    @Composable
+    private fun KeyboardContent() {
+        val currentKeyboardState by keyboardState.collectAsState()
+        val suggestions by viewModel.suggestions.collectAsState()
+        val voiceState by voiceInputManager.voiceState.collectAsState()
+        val voiceVolume by voiceInputManager.volume.collectAsState()
+
+        // Handle voice input results with proper error handling
+        LaunchedEffect(voiceState) {
+            try {
+                if (voiceState is VoiceInputState.Result) {
+                    val result = voiceState as VoiceInputState.Result
+                    if (result.text.isNotBlank()) {
+                        commitText(result.text)
+                    }
+                    _keyboardState.value = KeyboardState.Main
+                }
+            } catch (e: Exception) {
+                logError("Error handling voice input result", e)
+                _keyboardState.value = KeyboardState.Main
+            }
+        }
+
+        when (currentKeyboardState) {
+            is KeyboardState.Main -> {
+                val language by viewModel.currentLanguage.collectAsState()
+                MainKeyboardView(
+                    language = language,
+                    suggestions = suggestions.map { it.suggestion },
+                    onSuggestionClick = { suggestion ->
+                        handleKeyPress(suggestion)
+                    },
+                    onKeyClick = { key ->
+                        handleKeyPress(key)
+                    },
+                    onVoiceInputClick = {
+                        _keyboardState.value = KeyboardState.Voice
+                    },
+                    onGifKeyboardClick = {
+                        _keyboardState.value = KeyboardState.Gif
+                    },
+                    onSettingsClick = {
+                        openSettings()
+                    }
+                )
+            }
+
+        try {
+            isPasswordMode = false
+            currentPackageName = null
+
+            is KeyboardState.Gif -> {
+                GifKeyboard(
+                    viewModel = viewModel,
+                    onGifSelected = { media ->
+                        try {
+                            val url = media.images.original?.gifUrl
+                            if (!url.isNullOrBlank()) {
+                                commitText(url)
+                            } else {
+                                logWarning("Selected GIF has no URL")
+                            }
+                        } catch (e: Exception) {
+                            logError("Error selecting GIF", e)
+                        } finally {
+                            _keyboardState.value = KeyboardState.Main
+                        }
+                    },
+                    onClose = { _keyboardState.value = KeyboardState.Main }
+                )
+            }
             // Clear security flags
             window?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
             Timber.d("Input session finished - Security reset")
@@ -383,4 +499,105 @@ sealed class KeyboardState {
             setTextColor(ContextCompat.getColor(context, android.R.color.black))
         }
     }
+
+    // --- Security Logic Ported from Legacy Implementation ---
+
+    private fun detectPasswordField(inputType: Int, editorInfo: EditorInfo?): Boolean {
+        try {
+            val inputClass = inputType and InputType.TYPE_MASK_CLASS
+            val inputVariation = inputType and InputType.TYPE_MASK_VARIATION
+
+            // Method 1: Detect text-based password fields
+            val isTextPassword = inputClass == InputType.TYPE_CLASS_TEXT && (
+                inputVariation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
+                inputVariation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
+                inputVariation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+            )
+
+            // Method 2: Detect number-based password fields (PIN codes)
+            val isNumberPassword = inputClass == InputType.TYPE_CLASS_NUMBER &&
+                inputVariation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
+
+            // Method 3: Check hint text for password keywords
+            val hasPasswordHint = editorInfo?.let { info ->
+                val hintText = info.hintText?.toString()?.lowercase() ?: ""
+                val label = info.label?.toString()?.lowercase() ?: ""
+
+                hintText.contains("password") ||
+                hintText.contains("pin") ||
+                hintText.contains("passcode") ||
+                hintText.contains("senha") ||
+                hintText.contains("contraseña") ||
+                label.contains("password") ||
+                label.contains("pin")
+            } ?: false
+
+            // Method 4: Detect sensitive apps
+            val isSensitiveApp = editorInfo?.packageName?.let { pkg ->
+                val pkgLower = pkg.lowercase()
+
+                pkgLower.contains("bank") ||
+                pkgLower.contains("hsbc") ||
+                pkgLower.contains("chase") ||
+                pkgLower.contains("citibank") ||
+                pkgLower.contains("wallet") ||
+                pkgLower.contains("payment") ||
+                pkgLower.contains("paypal") ||
+                pkgLower.contains("venmo") ||
+                pkgLower.contains("gpay") ||
+                pkgLower.contains("paytm") ||
+                pkgLower.contains("phonepe") ||
+                pkgLower.contains("password") ||
+                pkgLower.contains("authenticator") ||
+                pkgLower.contains("keepass") ||
+                pkgLower.contains("bitwarden") ||
+                pkgLower.contains("lastpass") ||
+                pkgLower.contains("1password") ||
+                pkgLower.contains("dashlane") ||
+                pkgLower.contains("crypto") ||
+                pkgLower.contains("coinbase") ||
+                pkgLower.contains("blockchain") ||
+                pkgLower.contains("binance")
+            } ?: false
+
+            return isTextPassword || isNumberPassword || hasPasswordHint || isSensitiveApp
+        } catch (e: Exception) {
+            Timber.e(e, "Error detecting password field")
+            return false
+        }
+    }
+
+    private fun applySecurityMode(isPassword: Boolean) {
+        try {
+            window?.window?.let { window ->
+                if (isPassword) {
+                    // Prevent screenshots and screen recording
+                    window.setFlags(
+                        WindowManager.LayoutParams.FLAG_SECURE,
+                        WindowManager.LayoutParams.FLAG_SECURE
+                    )
+
+                    // Disable suggestions
+                    currentInputConnection?.performPrivateCommand("DisableSuggestions", null)
+
+                    Timber.d("🔒 SECURITY ENABLED:")
+                    Timber.d("   ├─ Screenshots: BLOCKED")
+                    Timber.d("   ├─ Screen Recording: BLOCKED")
+                    Timber.d("   ├─ Clipboard: DISABLED")
+                    Timber.d("   └─ Swipe Typing: DISABLED")
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                    Timber.d("🔓 Security mode disabled")
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error applying security mode")
+        }
+    }
+}
+
+sealed class KeyboardState {
+    object Main : KeyboardState()
+    object Voice : KeyboardState()
+    object Gif : KeyboardState()
 }
