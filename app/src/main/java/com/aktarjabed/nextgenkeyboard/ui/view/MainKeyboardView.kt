@@ -35,6 +35,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import com.aktarjabed.nextgenkeyboard.data.model.Clip
 import com.aktarjabed.nextgenkeyboard.data.model.Language
+import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePathProcessor
+import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePredictor
 
 @Composable
 fun MainKeyboardView(
@@ -53,7 +55,9 @@ fun MainKeyboardView(
     val layoutDirection = if (language.isRTL) LayoutDirection.Rtl else LayoutDirection.Ltr
     var showClipboard by remember { mutableStateOf(false) }
 
-    // Swipe State (Prototype)
+    // Swipe Integration
+    val swipePathProcessor = remember { SwipePathProcessor() }
+    val swipePredictor = remember { SwipePredictor() }
     var swipePath by remember { mutableStateOf<List<Offset>>(emptyList()) }
 
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
@@ -121,8 +125,13 @@ fun MainKeyboardView(
                         onSwipeStart = { swipePath = listOf(it) },
                         onSwipeMove = { swipePath = swipePath + it },
                         onSwipeEnd = {
-                            // TODO: Process swipePath to find nearest keys and form word
-                            // For now, clear path
+                            val keySequence = swipePathProcessor.processPathToKeySequence(swipePath)
+                            if (keySequence.isNotEmpty()) {
+                                val prediction = swipePredictor.predictWord(keySequence)
+                                if (prediction.isNotEmpty()) {
+                                    onSuggestionClick(prediction)
+                                }
+                            }
                             swipePath = emptyList()
                         }
                     ),
@@ -136,7 +145,10 @@ fun MainKeyboardView(
                         keyRow.keys.forEach { keyData ->
                             Key(
                                 char = keyData.display,
-                                onClick = onKeyClick
+                                onClick = onKeyClick,
+                                onPositioned = { rect ->
+                                    swipePathProcessor.registerKeyPosition(keyData.display, rect)
+                                }
                             )
                         }
                     }

@@ -11,16 +11,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun Key(
     char: String,
     onClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onPositioned: ((Rect) -> Unit)? = null
 ) {
     Box(
         modifier = modifier
+            .onGloballyPositioned { layoutCoordinates ->
+                onPositioned?.invoke(layoutCoordinates.boundsInRoot())
+            }
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
             .clickable { onClick(char) }
