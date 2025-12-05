@@ -44,6 +44,7 @@ class PreferencesRepository @Inject constructor(
         private val HAPTIC_FEEDBACK_ENABLED = booleanPreferencesKey("haptic_feedback_enabled")
         private val SWIPE_TYPING_ENABLED = booleanPreferencesKey("swipe_typing_enabled")
         private val AUTOCORRECT_ENABLED = booleanPreferencesKey("autocorrect_enabled")
+        private val RECENT_EMOJIS = stringPreferencesKey("recent_emojis")
 
         // Privacy & Clipboard Keys
         private val CLIPBOARD_ENABLED = booleanPreferencesKey("clipboard_enabled")
@@ -66,6 +67,23 @@ class PreferencesRepository @Inject constructor(
     val isHapticFeedbackEnabled: Flow<Boolean> = dataStore.data.map { it[HAPTIC_FEEDBACK_ENABLED] ?: true }
     val isSwipeTypingEnabled: Flow<Boolean> = dataStore.data.map { it[SWIPE_TYPING_ENABLED] ?: true }
     val isAutocorrectEnabled: Flow<Boolean> = dataStore.data.map { it[AUTOCORRECT_ENABLED] ?: true }
+
+    // ================== EMOJI PREFERENCES ==================
+    val recentEmojis: Flow<List<String>> = dataStore.data.map { prefs ->
+        prefs[RECENT_EMOJIS]?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
+    }
+
+    suspend fun addRecentEmoji(emoji: String) {
+        try {
+            dataStore.edit { prefs ->
+                val current = prefs[RECENT_EMOJIS]?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
+                val updated = (listOf(emoji) + current).distinct().take(50)
+                prefs[RECENT_EMOJIS] = updated.joinToString(",")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error updating recent emojis")
+        }
+    }
 
     // ================== LANGUAGE PREFERENCES ==================
 
