@@ -1,28 +1,15 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-.gradle/
-build/
-local.properties
-*.log
-=======
-=======
->>>>>>> origin/feature/multi-language-support
-# Android Studio
+*.iml
 .gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
 /build
 /captures
-.DS_Store
-.idea
+.externalNativeBuild
+.cxx
 local.properties
-
-# Log files
-*.log
-
-# Keystore files
-*.jks
-<<<<<<< HEAD
-*.keystore
->>>>>>> origin/feature/multi-language-support
-=======
-*.keystore
->>>>>>> origin/feature/multi-language-support

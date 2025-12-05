@@ -1,33 +1,36 @@
 package com.aktarjabed.nextgenkeyboard.feature.autocorrect
-import com.aktarjabed.nextgenkeyboard.state.CorrectionType
 
 import android.content.Context
 import androidx.collection.LruCache
 import com.aktarjabed.nextgenkeyboard.R
 import com.aktarjabed.nextgenkeyboard.data.model.Language
-import com.aktarjabed.nextgenkeyboard.data.model.Language
+import com.aktarjabed.nextgenkeyboard.state.CorrectionType
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import timber.log.Timber
+import java.io.BufferedReader
 import java.util.Collections
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.min
 
+/**
+ * Advanced Autocorrect Engine
+ * - Handles dictionary loading
+ * - Provides suggestions based on context and spelling
+ * - Manages learned words
+ *
+ * Rewritten to remove duplicated code and ensure thread safety.
+ */
 @Singleton
 class AdvancedAutocorrectEngine @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    // Use thread-safe collections
+    // Thread-safe collections
     private val dictionaries = ConcurrentHashMap<String, Set<String>>()
     private val learnedWords = Collections.synchronizedSet(mutableSetOf<String>())
-    private val bigramFrequency = ConcurrentHashMap<Pair<String, String>, Int>()
 
     // Background scope for heavy operations
     private val engineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -36,34 +39,33 @@ class AdvancedAutocorrectEngine @Inject constructor(
     private val suggestionCache = LruCache<String, List<AdvancedSuggestion>>(100)
 
     init {
-        // Load dictionaries asynchronously
+        // Load dictionaries asynchronously on init
         engineScope.launch {
             loadDictionaries()
         }
     }
 
     /**
-     * Load dictionaries for multiple languages
+     * Load dictionaries for supported languages.
+     * Tries to load from raw resources, falls back to basic list if failed.
      */
-    private fun loadDictionaries() {
-        // Load English dictionary
-        dictionaries["en"] = loadEnglishDictionary()
-        dictionaries["es"] = loadSpanishDictionary()
-        dictionaries["de"] = loadGermanDictionary()
     private suspend fun loadDictionaries() = withContext(Dispatchers.IO) {
         try {
             // Load English dictionary
-            dictionaries["en"] = loadDictionaryFromRes(R.raw.en_dict)
+            val enDict = loadDictionaryFromRes(R.raw.en_dict)
+            if (enDict.isNotEmpty()) {
+                dictionaries["en"] = enDict
+            } else {
+                dictionaries["en"] = loadFallbackDictionary()
+            }
 
-            // Load additional languages
+            // Placeholder for other languages (files not guaranteed to exist yet)
             // dictionaries["es"] = loadDictionaryFromRes(R.raw.es_dict)
-            // dictionaries["fr"] = loadDictionaryFromRes(R.raw.fr_dict)
 
-            Timber.d("✅ Loaded ${dictionaries.size} language dictionaries")
+            Timber.d("✅ Loaded dictionaries for: ${dictionaries.keys}")
         } catch (e: Exception) {
             Timber.e(e, "Error loading dictionaries")
-            // Fallback to embedded basic dictionary
-            loadFallbackDictionary()
+            dictionaries["en"] = loadFallbackDictionary()
         }
     }
 
@@ -76,14 +78,13 @@ class AdvancedAutocorrectEngine @Inject constructor(
                     .toSet()
             }
         } catch (e: Exception) {
-            Timber.w(e, "Dictionary resource not found: $resId")
+            Timber.w("Dictionary resource not found: $resId")
             emptySet()
         }
     }
 
     private fun loadFallbackDictionary(): Set<String> {
-        // Basic English word list
-        val basicWords = setOf(
+        return setOf(
             "the", "and", "you", "that", "was", "for", "are", "with", "his", "they",
             "have", "this", "will", "your", "from", "they", "know", "want", "been",
             "good", "much", "some", "time", "very", "when", "come", "here", "just",
@@ -94,29 +95,6 @@ class AdvancedAutocorrectEngine @Inject constructor(
             "again", "before", "going", "great", "little", "still", "through",
             "world", "years", "people", "because", "without", "information", "computer",
             "keyboard", "mobile", "phone", "application", "software", "internet"
-        )
-        dictionaries["en"] = basicWords
-        return basicWords
-    }
-
-    private fun loadSpanishDictionary(): Set<String> {
-        return setOf(
-            "el", "la", "de", "y", "a", "en", "que", "es", "por", "un",
-            "con", "no", "una", "su", "para", "como", "más", "pero", "las", "le",
-            "ser", "estar", "haber", "tener", "hacer", "decir", "ir", "ver", "dar",
-            "saber", "querer", "llegar", "pasar", "deber", "poner", "parecer", "quedar",
-            "creer", "hablar", "llevar", "dejar", "seguir", "encontrar", "llamar", "venir",
-            "hola", "gracias", "adiós", "por favor", "lo siento", "buenos días", "buenas tardes", "buenas noches"
-        )
-    }
-
-    private fun loadGermanDictionary(): Set<String> {
-        return setOf(
-            "der", "die", "das", "und", "in", "den", "von", "zu", "mit", "sich",
-            "auf", "für", "ist", "im", "dass", "nicht", "ein", "eine", "als", "auch",
-            "sein", "haben", "werden", "können", "müssen", "sagen", "geben", "machen", "kommen",
-            "sollen", "wollen", "gehen", "wissen", "sehen", "lassen", "stehen", "finden",
-            "hallo", "danke", "tschüss", "bitte", "entschuldigung", "guten morgen", "guten tag", "guten abend"
         )
     }
 
@@ -139,37 +117,28 @@ class AdvancedAutocorrectEngine @Inject constructor(
 
         try {
             val lowerWord = word.lowercase(Locale.getDefault())
-            val languageCode = language.code.substring(0, 2)
+            val languageCode = language.code.take(2).lowercase()
             val dictionary = getDictionaryForLanguage(languageCode)
 
             if (dictionary.isEmpty()) {
-                Timber.w("No dictionary available for language: $languageCode")
                 return@withContext emptyList()
             }
 
-            // 1. Quick exact match check
+            // 1. Exact Match
             if (dictionary.contains(lowerWord)) {
-                // Word exists, but still provide alternatives for context
-                addContextualSuggestions(suggestions, lowerWord, context, dictionary)
+                // Word is correct, but we might want to suggest capitalization or next words
+                // For now, just return empty list or valid confirmation?
+                // Typically we still suggest corrections if it's a common typo that results in a valid word
+                // but here we just accept it.
             } else {
-                // 2. Spelling corrections (optimized)
-                val spellingCorrections = findOptimizedSpellingCorrections(lowerWord, dictionary)
-                suggestions.addAll(spellingCorrections)
-
-                // 3. Context-aware suggestions
-                if (context.previousWord.isNotEmpty()) {
-                    val contextSuggestions = getContextSuggestions(lowerWord, context, dictionary)
-                    suggestions.addAll(contextSuggestions)
-                }
-
-                // 4. Common typos (fast lookup)
-                val typoCorrections = checkCommonTypos(word)
-                suggestions.addAll(typoCorrections)
+                // 2. Spelling corrections
+                val corrections = findOptimizedSpellingCorrections(lowerWord, dictionary)
+                suggestions.addAll(corrections)
             }
 
-            // 5. Capitalization fixes
+            // 3. Capitalization
             if (context.isStartOfSentence && word.firstOrNull()?.isLowerCase() == true) {
-                suggestions.add(
+                 suggestions.add(
                     AdvancedSuggestion(
                         original = word,
                         suggestion = word.replaceFirstChar { it.uppercase() },
@@ -183,23 +152,19 @@ class AdvancedAutocorrectEngine @Inject constructor(
             val finalSuggestions = suggestions
                 .sortedByDescending { it.confidence }
                 .distinctBy { it.suggestion.lowercase() }
-                .take(3) // Limit to top 3 for performance
+                .take(3)
 
-            // Cache the result
             suggestionCache.put(cacheKey, finalSuggestions)
-
-            Timber.d("Generated ${finalSuggestions.size} suggestions for '$word'")
             finalSuggestions
 
         } catch (e: Exception) {
-            Timber.e(e, "Error generating suggestions for '$word'")
+            Timber.e(e, "Error generating suggestions")
             emptyList()
         }
     }
 
     private fun getDictionaryForLanguage(languageCode: String): Set<String> {
-        return (dictionaries[languageCode] ?: dictionaries["en"] ?: emptySet())
-            .plus(learnedWords)
+        return (dictionaries[languageCode] ?: dictionaries["en"] ?: emptySet()) + learnedWords
     }
 
     private fun findOptimizedSpellingCorrections(
@@ -209,64 +174,29 @@ class AdvancedAutocorrectEngine @Inject constructor(
         val corrections = mutableListOf<AdvancedSuggestion>()
         val maxDistance = if (word.length <= 4) 1 else 2
 
-        // Use parallel processing for large dictionaries
-        val candidateWords = dictionary
-            .filter { dictWord ->
-                // Quick pre-filter by length
-                kotlin.math.abs(dictWord.length - word.length) <= maxDistance &&
-                // Quick pre-filter by first character
-                (dictWord.firstOrNull()?.equals(word.firstOrNull(), true) == true ||
-                 maxDistance >= 2)
+        // Simple filtering for performance
+        val candidates = dictionary.asSequence()
+            .filter {
+                kotlin.math.abs(it.length - word.length) <= maxDistance
             }
-            .take(500) // Limit candidates for performance
+            .take(1000) // Limit search space
 
-        candidateWords.forEach { dictWord ->
+        for (dictWord in candidates) {
             val distance = levenshteinDistance(word, dictWord)
             if (distance <= maxDistance && distance > 0) {
-                val confidence = 1f - (distance.toFloat() / maxOf(word.length, dictWord.length))
-                corrections.add(
+                 val confidence = 1f - (distance.toFloat() / maxOf(word.length, dictWord.length))
+                 corrections.add(
                     AdvancedSuggestion(
                         original = word,
                         suggestion = matchCase(dictWord, word),
-                        confidence = confidence * 0.8f,
+                        confidence = confidence,
                         type = CorrectionType.SPELLING,
                         reasoning = "Edit distance: $distance"
                     )
                 )
             }
         }
-
-        return corrections.sortedByDescending { it.confidence }.take(3)
-    }
-
-    // Add resource cleanup
-    fun cleanup() {
-        engineScope.cancel()
-        suggestionCache.evictAll()
-        Timber.d("Autocorrect engine cleaned up")
-    }
-
-    private fun addContextualSuggestions(
-        suggestions: MutableList<AdvancedSuggestion>,
-        lowerWord: String,
-        context: WordContext,
-        dictionary: Set<String>
-    ) {
-        // Implementation for contextual suggestions
-    }
-
-    private fun getContextSuggestions(
-        lowerWord: String,
-        context: WordContext,
-        dictionary: Set<String>
-    ): List<AdvancedSuggestion> {
-        // Implementation for context suggestions
-        return emptyList()
-    }
-
-    private fun checkCommonTypos(word: String): List<AdvancedSuggestion> {
-        // Implementation for common typos
-        return emptyList()
+        return corrections
     }
 
     private fun levenshteinDistance(s1: String, s2: String): Int {
@@ -287,7 +217,6 @@ class AdvancedAutocorrectEngine @Inject constructor(
                 )
             }
         }
-
         return dist[len1][len2]
     }
 
@@ -307,11 +236,18 @@ class AdvancedAutocorrectEngine @Inject constructor(
     }
 
     fun processInput(text: String): String {
-        // Dummy implementation
+        // Placeholder for auto-replacement logic (e.g. "teh" -> "the")
+        // For now, return as is.
         return text
+    }
+
+    fun cleanup() {
+        engineScope.cancel()
+        suggestionCache.evictAll()
     }
 }
 
+// Data Classes
 data class AdvancedSuggestion(
     val original: String,
     val suggestion: String,
