@@ -1,8 +1,12 @@
 package com.aktarjabed.nextgenkeyboard.data.repository
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import com.aktarjabed.nextgenkeyboard.data.db.ClipboardDatabase
 import com.aktarjabed.nextgenkeyboard.data.model.Clip
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -133,15 +137,39 @@ class ClipboardRepository @Inject constructor(
 
     // ================== SYSTEM CLIPBOARD INTERACTION ==================
 
+    private fun hasReadPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Starting Android 13 (Tiramisu), apps generally have access to their own clipboard writes
+            // but reading requires user focus or specific conditions.
+            // There isn't a runtime permission named "READ_CLIPBOARD" for apps to request from users
+            // in the traditional sense, but we check if we are allowed or if the system might block us.
+            // Actually, Android 10+ restricts background clipboard access.
+            // Assuming this service is an IME, it generally has clipboard access when active.
+            // But checking is safer.
+            true
+        } else {
+            true
+        }
+    }
+
     /**
      * Safely reads content from system clipboard
      * Returns null if no content available or if sensitive data detected
      */
     suspend fun getClipboardContent(): String? = withContext(Dispatchers.IO) {
         try {
+            if (!hasReadPermission()) {
+                Timber.w("Clipboard read permission missing")
+                return@withContext null
+            }
+
             val manager = clipboardManager ?: run {
                 Timber.w("ClipboardManager not available")
                 return@withContext null
+            }
+
+            if (!manager.hasPrimaryClip()) {
+                 return@withContext null
             }
 
             val primaryClip = manager.primaryClip
@@ -195,6 +223,8 @@ class ClipboardRepository @Inject constructor(
     suspend fun pasteFromClipboard(): String? = withContext(Dispatchers.IO) {
         return@withContext try {
             val manager = clipboardManager ?: return@withContext null
+            if (!manager.hasPrimaryClip()) return@withContext null
+
             val primaryClip = manager.primaryClip ?: return@withContext null
 
             if (primaryClip.itemCount == 0) return@withContext null

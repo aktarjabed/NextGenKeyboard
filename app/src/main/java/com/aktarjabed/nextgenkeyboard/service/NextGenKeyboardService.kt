@@ -14,8 +14,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
@@ -77,7 +78,7 @@ import javax.inject.Inject
  * 3. Clean up conflicting lifecycle methods.
  */
 @AndroidEntryPoint
-class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedStateRegistryOwner {
+class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedStateRegistryOwner, LifecycleOwner {
 
     // Dependencies injected via Hilt
     @Inject lateinit var autocorrectEngine: AdvancedAutocorrectEngine
@@ -99,6 +100,10 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob + exceptionHandler)
 
+    // LifecycleOwner implementation
+    private val lifecycleRegistry = LifecycleRegistry(this)
+    override val lifecycle: Lifecycle get() = lifecycleRegistry
+
     // Compose & UI
     private var composeView: ComposeView? = null
     private val _keyboardState = MutableStateFlow<KeyboardState>(KeyboardState.Main)
@@ -119,6 +124,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     override fun onCreate() {
         super.onCreate()
         savedStateRegistryController.performRestore(null)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
 
         try {
             initializeComponents()
@@ -147,6 +153,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
 
     override fun onDestroy() {
         try {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
             composeView?.disposeComposition()
             composeView = null
 
@@ -167,6 +174,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
 
         try {
             currentPackageName = attribute?.packageName
@@ -198,7 +206,28 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
         _keyboardState.value = KeyboardState.Main
+    }
+
+    override fun onFinishInputView(finishingInput: Boolean) {
+        super.onFinishInputView(finishingInput)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+    }
+
+    override fun onFinishInput() {
+        super.onFinishInput()
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        try {
+            isPasswordMode = false
+            currentPackageName = null
+
+            // Clear security flags
+            window?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            Timber.d("Input session finished - Security reset")
+        } catch (e: Exception) {
+            Timber.e(e, "Error in onFinishInput")
+        }
     }
 
     override fun onCreateInputView(): View {
@@ -222,20 +251,6 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
         } catch (e: Exception) {
             logError("Error creating input view", e)
             createFallbackView()
-        }
-    }
-
-    override fun onFinishInput() {
-        super.onFinishInput()
-        try {
-            isPasswordMode = false
-            currentPackageName = null
-
-            // Clear security flags
-            window?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-            Timber.d("Input session finished - Security reset")
-        } catch (e: Exception) {
-            Timber.e(e, "Error in onFinishInput")
         }
     }
 

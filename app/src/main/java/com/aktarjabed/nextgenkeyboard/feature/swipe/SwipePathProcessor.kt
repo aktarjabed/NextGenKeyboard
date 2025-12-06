@@ -8,6 +8,11 @@ import javax.inject.Singleton
 @Singleton
 class SwipePathProcessor @Inject constructor() {
 
+    companion object {
+        private const val MAX_PATH_POINTS = 500
+        private const val POINT_DEDUPLICATE_DISTANCE = 5f
+    }
+
     private val keyPositions = mutableMapOf<String, Rect>()
 
     fun registerKeyPosition(key: String, rect: Rect) {
@@ -21,6 +26,14 @@ class SwipePathProcessor @Inject constructor() {
     fun processPathToKeySequence(path: List<Offset>): String {
         // Filter out very short paths (accidental touches)
         if (path.size < 3) return ""
+
+        // Safety check for excessively long paths
+        if (path.size > MAX_PATH_POINTS) {
+            // If path is too long, take a subsample to avoid performance freeze
+            // Or just return empty if it's likely noise. Subsampling is safer.
+            // For now, let's truncate to keep it safe.
+            return processPathToKeySequence(path.take(MAX_PATH_POINTS))
+        }
 
         val filteredPath = filterByVelocity(path)
 
