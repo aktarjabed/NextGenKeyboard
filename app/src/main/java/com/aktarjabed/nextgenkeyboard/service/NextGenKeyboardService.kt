@@ -29,10 +29,13 @@ import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import com.aktarjabed.nextgenkeyboard.feature.autocorrect.AdvancedAutocorrectEngine
 import com.aktarjabed.nextgenkeyboard.feature.gif.GiphyManager
+import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePathProcessor
+import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePredictor
 import com.aktarjabed.nextgenkeyboard.feature.voice.VoiceInputManager
 import com.aktarjabed.nextgenkeyboard.feature.voice.VoiceInputState
 import com.aktarjabed.nextgenkeyboard.ui.screens.MainActivity
 import com.aktarjabed.nextgenkeyboard.ui.theme.NextGenKeyboardTheme
+import com.aktarjabed.nextgenkeyboard.ui.view.EmojiKeyboard
 import com.aktarjabed.nextgenkeyboard.ui.view.GifKeyboard
 import com.aktarjabed.nextgenkeyboard.ui.view.MainKeyboardView
 import com.aktarjabed.nextgenkeyboard.ui.viewmodel.KeyboardViewModel
@@ -68,6 +71,8 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     @Inject lateinit var clipboardRepository: ClipboardRepository
     @Inject lateinit var voiceInputManager: VoiceInputManager
     @Inject lateinit var giphyManager: GiphyManager
+    @Inject lateinit var swipePredictor: SwipePredictor
+    @Inject lateinit var swipePathProcessor: SwipePathProcessor
 
     // ViewModel - Manually created using injected dependencies
     private lateinit var viewModel: KeyboardViewModel
@@ -163,6 +168,11 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
             } else {
                 Timber.d("📝 Regular input field in ${attribute?.packageName}")
             }
+
+            // Clipboard Diagnostic
+            val diagnostic = com.aktarjabed.nextgenkeyboard.util.ClipboardDiagnostic(this)
+            Timber.d(diagnostic.runFullDiagnostic())
+
         } catch (e: Exception) {
             Timber.e(e, "Error in onStartInput")
         }
@@ -215,9 +225,6 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     private fun KeyboardContent() {
         val currentKeyboardState by keyboardState.collectAsState()
         val suggestions by viewModel.uiState.collectAsState() // Fixing suggestion flow access
-        // Note: KeyboardViewModel.uiState is KeyboardUiState, not a list of suggestions.
-        // We need to access suggestions from the state or map it correctly.
-        // Assuming the UI logic handles state. For now, we'll placeholder the suggestions.
         val dummySuggestions = emptyList<String>()
 
         val voiceState by voiceInputManager.voiceState.collectAsState()
@@ -236,10 +243,26 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
         when (currentKeyboardState) {
             is KeyboardState.Main -> {
                 // We need to observe language from VM or Repo
-                val language = "en" // Placeholder
+                val defaultLanguage = com.aktarjabed.nextgenkeyboard.data.model.Language(
+                    locale = java.util.Locale.US,
+                    displayName = "English (US)",
+                    layout = com.aktarjabed.nextgenkeyboard.data.model.LanguageLayout(
+                        rows = listOf(
+                            com.aktarjabed.nextgenkeyboard.data.model.KeyRow(
+                                keys = "qwertyuiop".map { com.aktarjabed.nextgenkeyboard.data.model.KeyData(it.toString(), it.toString()) }
+                            ),
+                            com.aktarjabed.nextgenkeyboard.data.model.KeyRow(
+                                keys = "asdfghjkl".map { com.aktarjabed.nextgenkeyboard.data.model.KeyData(it.toString(), it.toString()) }
+                            ),
+                            com.aktarjabed.nextgenkeyboard.data.model.KeyRow(
+                                keys = "zxcvbnm".map { com.aktarjabed.nextgenkeyboard.data.model.KeyData(it.toString(), it.toString()) }
+                            )
+                        )
+                    )
+                )
 
                 MainKeyboardView(
-                    language = language,
+                    language = defaultLanguage, // TODO: Get from ViewModel
                     suggestions = dummySuggestions,
                     onSuggestionClick = { suggestion ->
                         handleKeyPress(suggestion)
@@ -255,7 +278,12 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                     },
                     onSettingsClick = {
                         openSettings()
-                    }
+                    },
+                    onEmojiClick = {
+                        _keyboardState.value = KeyboardState.Emoji
+                    },
+                    swipePredictor = swipePredictor, // Injected predictor
+                    swipePathProcessor = swipePathProcessor // Injected processor
                 )
             }
 
@@ -277,10 +305,32 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
             }
 
             is KeyboardState.Voice -> {
-                 // Placeholder
-                 _keyboardState.value = KeyboardState.Main
+                 VoiceInputViewWrapper(
+                     onClose = { _keyboardState.value = KeyboardState.Main }
+                 )
+            }
+
+            is KeyboardState.Emoji -> {
+                EmojiKeyboard(
+                    viewModel = viewModel,
+                    onEmojiSelected = { emoji ->
+                        commitText(emoji)
+                    },
+                    onBackspace = {
+                        handleBackspace()
+                    },
+                    onBackToAlphabet = {
+                        _keyboardState.value = KeyboardState.Main
+                    }
+                )
             }
         }
+    }
+
+    @Composable
+    fun VoiceInputViewWrapper(onClose: () -> Unit) {
+        // Placeholder for VoiceInputView
+        androidx.compose.material3.Text("Voice Input (Tap to Close)", modifier = androidx.compose.ui.Modifier.androidx.compose.foundation.clickable { onClose() })
     }
 
     private fun handleKeyPress(text: String) {
@@ -395,4 +445,5 @@ sealed class KeyboardState {
     object Main : KeyboardState()
     object Voice : KeyboardState()
     object Gif : KeyboardState()
+    object Emoji : KeyboardState()
 }

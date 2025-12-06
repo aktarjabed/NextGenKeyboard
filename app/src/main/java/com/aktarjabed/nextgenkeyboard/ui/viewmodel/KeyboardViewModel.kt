@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +26,9 @@ class KeyboardViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<KeyboardUiState>(KeyboardUiState.Loading)
     val uiState: StateFlow<KeyboardUiState> = _uiState.asStateFlow()
+
+    // Emoji support
+    val recentEmojis: Flow<List<String>> = preferencesRepository.recentEmojis
 
     init {
         loadState()
@@ -49,7 +53,12 @@ class KeyboardViewModel @Inject constructor(
     fun handleKeyPress(key: Char) {
         viewModelScope.launch {
             // Logic for key press
-            // e.g., clipboardRepository.copy(key.toString()) // Just an example, normally we don't copy every key
+        }
+    }
+
+    fun trackEmojiUsage(emoji: String) {
+        viewModelScope.launch {
+            preferencesRepository.addRecentEmoji(emoji)
         }
     }
 }

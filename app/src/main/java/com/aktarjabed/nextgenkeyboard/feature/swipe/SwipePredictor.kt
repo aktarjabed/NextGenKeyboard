@@ -8,12 +8,6 @@ import javax.inject.Singleton
 @Singleton
 class SwipePredictor @Inject constructor() {
 
-    private val dictionary = setOf(
-        "the", "and", "for", "are", "but", "not", "you", "all", "can", "her",
-        "was", "one", "our", "out", "day", "get", "has", "him", "his", "how",
-        "man", "new", "now", "old", "see", "two", "way", "who", "boy", "did",
-        "its", "let", "put", "say", "she", "too", "use", "hello", "world", "test"
-    )
     // ✅ Trie node for efficient prefix search
     private class TrieNode {
         val children = mutableMapOf<Char, TrieNode>()
@@ -69,9 +63,6 @@ class SwipePredictor @Inject constructor() {
 
     fun predictWord(keySequence: String): String {
         if (keySequence.length < 2) return ""
-
-        val matches = dictionary.filter { it.startsWith(keySequence.lowercase()) }
-        return matches.firstOrNull() ?: keySequence
         try {
             val suggestions = getSuggestions(keySequence, limit = 1)
             return suggestions.firstOrNull() ?: keySequence
@@ -84,9 +75,6 @@ class SwipePredictor @Inject constructor() {
     fun getSuggestions(keySequence: String, limit: Int = 3): List<String> {
         if (keySequence.length < 2) return emptyList()
 
-        return dictionary
-            .filter { it.startsWith(keySequence.lowercase()) }
-            .take(limit)
         try {
             val prefix = keySequence.lowercase(Locale.getDefault())
             val suggestions = mutableListOf<Pair<String, Int>>() // word to frequency

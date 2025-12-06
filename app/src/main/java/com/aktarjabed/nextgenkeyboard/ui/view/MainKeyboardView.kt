@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.Gif
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
@@ -20,13 +22,23 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
+import com.aktarjabed.nextgenkeyboard.data.model.Clip
 import com.aktarjabed.nextgenkeyboard.data.model.Language
+import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePathProcessor
+import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePredictor
 
 @Composable
 fun MainKeyboardView(
@@ -37,8 +49,18 @@ fun MainKeyboardView(
     onVoiceInputClick: () -> Unit,
     onGifKeyboardClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    swipePredictor: SwipePredictor,
+    swipePathProcessor: SwipePathProcessor,
+    onClipboardClick: () -> Unit = {},
+    onEmojiClick: () -> Unit = {},
+    recentClips: List<Clip> = emptyList(),
+    onClipSelected: (String) -> Unit = {}
 ) {
     val layoutDirection = if (language.isRTL) LayoutDirection.Rtl else LayoutDirection.Ltr
+    var showClipboard by remember { mutableStateOf(false) }
+
+    // State to track the keyboard's global position offset
+    var keyboardRootOffset by remember { mutableStateOf(Offset.Zero) }
 
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         Column(
@@ -62,29 +84,69 @@ fun MainKeyboardView(
                 IconButton(onClick = onGifKeyboardClick) {
                     Icon(Icons.Default.Gif, contentDescription = "GIF Keyboard")
                 }
+                IconButton(onClick = { showClipboard = !showClipboard }) {
+                    Icon(Icons.Default.ContentPaste, contentDescription = "Clipboard")
+                }
+                IconButton(onClick = onEmojiClick) {
+                    Icon(Icons.Default.EmojiEmotions, contentDescription = "Emoji")
+                }
             }
 
-            // Suggestion bar
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(40.dp)
-                    .padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                items(suggestions) { suggestion ->
-                    Button(onClick = { onSuggestionClick(suggestion) }) {
-                        Text(suggestion)
+            // Dynamic Content Area
+            if (showClipboard) {
+                ClipboardStrip(
+                    clips = recentClips,
+                    onClipClick = {
+                        onClipSelected(it)
+                        showClipboard = false
+                    }
+                )
+            } else {
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp)
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    items(suggestions) { suggestion ->
+                        Button(onClick = { onSuggestionClick(suggestion) }) {
+                            Text(suggestion)
+                        }
                     }
                 }
             }
 
-            // Main keyboard layout
+            // Main keyboard layout with Swipe Detector
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
+                    .padding(8.dp)
+                    .onGloballyPositioned { coordinates ->
+                        keyboardRootOffset = coordinates.boundsInRoot().topLeft
+                    }
+                    .detectSwipeGesture(
+                        onSwipeComplete = { localPath ->
+                            // Convert local path to global path
+                            val globalPath = localPath.map { it + keyboardRootOffset }
+                            val keySequence = swipePathProcessor.processPathToKeySequence(globalPath)
+                            if (keySequence.isNotEmpty()) {
+                                val prediction = swipePredictor.predictWord(keySequence)
+                                if (prediction.isNotEmpty()) {
+                                    onSuggestionClick(prediction)
+                                }
+                            }
+                        },
+                        onTap = { localOffset ->
+                            // Convert local tap to global coordinate
+                            val globalOffset = localOffset + keyboardRootOffset
+                            val key = swipePathProcessor.findKeyAt(globalOffset)
+                            if (key != null) {
+                                onKeyClick(key)
+                            }
+                        }
+                    ),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 language.layout.rows.forEach { keyRow ->
@@ -95,7 +157,10 @@ fun MainKeyboardView(
                         keyRow.keys.forEach { keyData ->
                             Key(
                                 char = keyData.display,
-                                onClick = onKeyClick
+                                onClick = { onKeyClick(keyData.display) }, // Pass click action for accessibility
+                                onPositioned = { rect ->
+                                    swipePathProcessor.registerKeyPosition(keyData.display, rect)
+                                }
                             )
                         }
                     }
