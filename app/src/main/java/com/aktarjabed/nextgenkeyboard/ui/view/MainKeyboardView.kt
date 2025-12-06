@@ -25,7 +25,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,13 +74,6 @@ fun MainKeyboardView(
 
     // State to track the keyboard's global position offset
     var keyboardRootOffset by remember { mutableStateOf(Offset.Zero) }
-
-    // Clear key positions when language changes to avoid stale keys from previous layout
-    DisposableEffect(language) {
-        onDispose {
-            swipePathProcessor.clearKeys()
-        }
-    }
 
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         Column(
