@@ -1,17 +1,36 @@
 package com.aktarjabed.nextgenkeyboard.feature.swipe
 
+import android.content.Context
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import dagger.hilt.android.qualifiers.ApplicationContext
 import timber.log.Timber
-import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SwipePathProcessor @Inject constructor() {
+class SwipePathProcessor @Inject constructor(
+    @ApplicationContext context: Context
+) {
 
-    // Thread-safe replacement for mutableMapOf
-    private val keyPositions = ConcurrentHashMap<String, Rect>()
+    private val spatialGrid: SpatialKeyGrid
+    private val maxScreenWidth: Float
+    private val maxScreenHeight: Float
+
+    init {
+        val metrics = context.resources.displayMetrics
+        maxScreenWidth = metrics.widthPixels.toFloat()
+        maxScreenHeight = metrics.heightPixels.toFloat()
+        spatialGrid = SpatialKeyGrid(
+            screenWidth = metrics.widthPixels,
+            screenHeight = metrics.heightPixels
+        )
+    }
+
+    companion object {
+        private const val MAX_PATH_LENGTH = 500
+        private const val MIN_PATH_LENGTH = 3
+    }
 
     fun registerKeyPosition(key: String, rect: Rect) {
         if (key.isBlank()) {
@@ -23,13 +42,17 @@ class SwipePathProcessor @Inject constructor() {
             Timber.w("Rect must be valid size")
             return
         }
-        keyPositions[key] = rect
+        spatialGrid.registerKey(key, rect)
     }
 
     fun processPathToKeySequence(path: List<Offset>): String {
         // Gap #2: Input validation
+        require(path.size <= MAX_PATH_LENGTH) {
+            "Path too long: ${path.size} > $MAX_PATH_LENGTH"
+        }
+
         val validatedPath = validateAndFilterPath(path)
-        if (validatedPath.size < 3) {
+        if (validatedPath.size < MIN_PATH_LENGTH) {
             Timber.d("Path too short or invalid: ${path.size} points")
             return ""
         }
@@ -48,7 +71,7 @@ class SwipePathProcessor @Inject constructor() {
         return path.filter { offset ->
             offset.isValid() && // Reject NaN/Infinite (Gap #2)
             offset.x >= 0f && offset.y >= 0f && // Positive coords
-            offset.x < 2000f && offset.y < 2000f // Reasonable screen bounds (prevents outliers)
+            offset.x < maxScreenWidth && offset.y < maxScreenHeight // Dynamic screen bounds
         }
     }
 
@@ -74,11 +97,7 @@ class SwipePathProcessor @Inject constructor() {
     }
 
     private fun findIntersectingKey(offset: Offset): String? {
-        return keyPositions.entries
-            .asSequence()
-            .firstOrNull { (_, rect) ->
-                rect.contains(offset)
-            }?.key
+        return spatialGrid.findKeyAt(offset)
     }
 
     private fun <T> Sequence<T>.distinctConsecutive(): List<T> =
@@ -88,5 +107,5 @@ class SwipePathProcessor @Inject constructor() {
         }
 
     // Clear positions on keyboard layout change
-    fun clearKeyPositions() = keyPositions.clear()
+    fun clearKeyPositions() = spatialGrid.clear()
 }
