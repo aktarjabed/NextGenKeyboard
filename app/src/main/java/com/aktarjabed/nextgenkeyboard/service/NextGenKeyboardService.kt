@@ -29,6 +29,7 @@ import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import com.aktarjabed.nextgenkeyboard.feature.autocorrect.AdvancedAutocorrectEngine
 import com.aktarjabed.nextgenkeyboard.feature.gif.GiphyManager
+import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePredictor
 import com.aktarjabed.nextgenkeyboard.feature.voice.VoiceInputManager
 import com.aktarjabed.nextgenkeyboard.feature.voice.VoiceInputState
 import com.aktarjabed.nextgenkeyboard.ui.screens.MainActivity
@@ -69,6 +70,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     @Inject lateinit var clipboardRepository: ClipboardRepository
     @Inject lateinit var voiceInputManager: VoiceInputManager
     @Inject lateinit var giphyManager: GiphyManager
+    @Inject lateinit var swipePredictor: SwipePredictor
 
     // ViewModel - Manually created using injected dependencies
     private lateinit var viewModel: KeyboardViewModel
@@ -221,9 +223,6 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     private fun KeyboardContent() {
         val currentKeyboardState by keyboardState.collectAsState()
         val suggestions by viewModel.uiState.collectAsState() // Fixing suggestion flow access
-        // Note: KeyboardViewModel.uiState is KeyboardUiState, not a list of suggestions.
-        // We need to access suggestions from the state or map it correctly.
-        // Assuming the UI logic handles state. For now, we'll placeholder the suggestions.
         val dummySuggestions = emptyList<String>()
 
         val voiceState by voiceInputManager.voiceState.collectAsState()
@@ -242,21 +241,6 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
         when (currentKeyboardState) {
             is KeyboardState.Main -> {
                 // We need to observe language from VM or Repo
-                val language = com.aktarjabed.nextgenkeyboard.data.model.Language(
-                     locale = java.util.Locale.US,
-                     displayName = "English (US)",
-                     layout = com.aktarjabed.nextgenkeyboard.data.model.LanguageLayout(emptyList()) // Placeholder, actually need to load real layout
-                )
-                // Real layout loading would happen via ViewModel. For now, assume MainKeyboardView handles it or it's passed correctly if available.
-                // Reverting to previous placeholder behavior but making it compilable if possible.
-                // Actually, MainKeyboardView requires a Language object. I should rely on what was there or inject it.
-                // The previous code had `val language = "en"`. MainKeyboardView expects `Language` object.
-                // I'll fetch it from a singleton or repository if available.
-                // For MVP, I'll construct a dummy one or use what's available.
-                // Wait, I see `LanguagesPro` in memories.
-
-                // Let's use a dummy for now to make it compile, or better, the actual one.
-                // Accessing Languages.EnglishUS via LanguagesPro or static.
                 val defaultLanguage = com.aktarjabed.nextgenkeyboard.data.model.Language(
                     locale = java.util.Locale.US,
                     displayName = "English (US)",
@@ -274,7 +258,6 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                         )
                     )
                 )
-
 
                 MainKeyboardView(
                     language = defaultLanguage, // TODO: Get from ViewModel
@@ -296,7 +279,8 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                     },
                     onEmojiClick = {
                         _keyboardState.value = KeyboardState.Emoji
-                    }
+                    },
+                    swipePredictor = swipePredictor // Injected predictor
                 )
             }
 
@@ -331,18 +315,11 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                     },
                     onBackspace = {
                         handleBackspace()
+                    },
+                    onBackToAlphabet = {
+                        _keyboardState.value = KeyboardState.Main
                     }
                 )
-                // Add a back button or way to return to main keyboard?
-                // EmojiKeyboard typically has tabs. A back button might be needed or backspace acts as one?
-                // Usually there is a keyboard icon to switch back.
-                // For MVP, back press on device handles it via onBackPressed?
-                // Service doesn't handle back press easily.
-                // I should add a "Back to Keyboard" button in EmojiKeyboard or rely on the toggle.
-                // The provided EmojiKeyboard UI has a backspace but no explicit "Close" button.
-                // I'll assume users use the system back button (which closes keyboard) or I need to add a "ABC" button.
-                // I'll add a temporary "ABC" button in EmojiKeyboard or just use the system back behavior which might close the view.
-                // Actually, let's modify EmojiKeyboard to have a generic "Switch to ABC" button if requested, but for now stick to plan.
             }
         }
     }

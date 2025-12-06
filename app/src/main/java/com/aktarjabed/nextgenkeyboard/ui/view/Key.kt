@@ -1,7 +1,6 @@
 package com.aktarjabed.nextgenkeyboard.ui.view
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +18,6 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun Key(
     char: String,
-    onClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     onPositioned: ((Rect) -> Unit)? = null
 ) {
@@ -30,7 +28,6 @@ fun Key(
             }
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .clickable { onClick(char) }
             .padding(horizontal = 12.dp, vertical = 16.dp),
         contentAlignment = Alignment.Center
     ) {
