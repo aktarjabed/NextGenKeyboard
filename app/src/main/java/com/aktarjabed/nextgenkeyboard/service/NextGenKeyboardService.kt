@@ -25,6 +25,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.aktarjabed.nextgenkeyboard.BuildConfig
+import com.aktarjabed.nextgenkeyboard.data.model.LanguageKeyboardDatabase
 import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import com.aktarjabed.nextgenkeyboard.feature.autocorrect.AdvancedAutocorrectEngine
@@ -45,7 +46,13 @@ import com.aktarjabed.nextgenkeyboard.ui.viewmodel.KeyboardViewModel
 import com.aktarjabed.nextgenkeyboard.util.logError
 import com.aktarjabed.nextgenkeyboard.util.logInfo
 import com.aktarjabed.nextgenkeyboard.util.logWarning
+import com.aktarjabed.nextgenkeyboard.util.safeCommitText
+import com.aktarjabed.nextgenkeyboard.util.safeDeleteSurroundingText
+import com.aktarjabed.nextgenkeyboard.util.safeGetSelectedText
+import com.aktarjabed.nextgenkeyboard.util.safePerformContextMenuAction
+import com.aktarjabed.nextgenkeyboard.util.safeSendKeyEvent
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -86,8 +93,11 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     private lateinit var viewModel: KeyboardViewModel
 
     // Lifecycle & State Management
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        logError("Uncaught coroutine exception", throwable)
+    }
     private val serviceJob = SupervisorJob()
-    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
+    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob + exceptionHandler)
 
     // Compose & UI
     private var composeView: ComposeView? = null
@@ -241,6 +251,9 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
         val themeId by preferencesRepository.themePreference.collectAsState(initial = "light")
         val currentTheme = KeyboardThemes.ALL_THEMES.find { it.id == themeId } ?: KeyboardThemes.LIGHT
 
+        // Observe current language
+        val languageCode by preferencesRepository.keyboardLanguage.collectAsState(initial = "en")
+
         // Handle voice input results
         LaunchedEffect(voiceState) {
             if (voiceState is VoiceInputState.Result) {
@@ -254,27 +267,19 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
 
         when (currentKeyboardState) {
             is KeyboardState.Main -> {
-                // We need to observe language from VM or Repo
-                val defaultLanguage = com.aktarjabed.nextgenkeyboard.data.model.Language(
-                    locale = java.util.Locale.US,
-                    displayName = "English (US)",
-                    layout = com.aktarjabed.nextgenkeyboard.data.model.LanguageLayout(
-                        rows = listOf(
-                            com.aktarjabed.nextgenkeyboard.data.model.KeyRow(
-                                keys = "qwertyuiop".map { com.aktarjabed.nextgenkeyboard.data.model.KeyData(it.toString(), it.toString()) }
-                            ),
-                            com.aktarjabed.nextgenkeyboard.data.model.KeyRow(
-                                keys = "asdfghjkl".map { com.aktarjabed.nextgenkeyboard.data.model.KeyData(it.toString(), it.toString()) }
-                            ),
-                            com.aktarjabed.nextgenkeyboard.data.model.KeyRow(
-                                keys = "zxcvbnm".map { com.aktarjabed.nextgenkeyboard.data.model.KeyData(it.toString(), it.toString()) }
-                            )
-                        )
-                    )
+                // Fetch layout dynamically from database based on user preference
+                val languageLayoutDefinition = LanguageKeyboardDatabase.getLayout(languageCode)
+                val currentLanguage = com.aktarjabed.nextgenkeyboard.data.model.Language(
+                    locale = Locale(languageCode),
+                    displayName = languageLayoutDefinition.languageName,
+                    nativeName = languageLayoutDefinition.nativeName,
+                    layouts = listOf(languageLayoutDefinition.toLanguageLayout()),
+                    isRTL = languageLayoutDefinition.scriptType == com.aktarjabed.nextgenkeyboard.data.model.ScriptType.ARABIC ||
+                            languageLayoutDefinition.scriptType == com.aktarjabed.nextgenkeyboard.data.model.ScriptType.HEBREW
                 )
 
                 MainKeyboardView(
-                    language = defaultLanguage, // TODO: Get from ViewModel
+                    language = currentLanguage,
                     suggestions = dummySuggestions,
                     onSuggestionClick = { suggestion ->
                         handleKeyPress(suggestion)
@@ -351,7 +356,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     private fun handleUtilityAction(action: UtilityKeyAction) {
         when (action) {
             UtilityKeyAction.COPY -> {
-                val selectedText = currentInputConnection?.getSelectedText(0)
+                val selectedText = currentInputConnection.safeGetSelectedText(0)
                 if (!selectedText.isNullOrEmpty()) {
                     serviceScope.launch { clipboardRepository.copyToClipboard(selectedText.toString(), "Selection") }
                 }
@@ -365,15 +370,15 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                 }
             }
             UtilityKeyAction.SELECT_ALL -> {
-                currentInputConnection?.performContextMenuAction(android.R.id.selectAll)
+                currentInputConnection.safePerformContextMenuAction(android.R.id.selectAll)
             }
             UtilityKeyAction.CUT -> {
-                currentInputConnection?.performContextMenuAction(android.R.id.cut)
+                currentInputConnection.safePerformContextMenuAction(android.R.id.cut)
             }
             UtilityKeyAction.UNDO_LAST_DELETE -> {
                 // Not standard Android API, often requires tracking history.
                 // Fallback to system undo if available.
-                currentInputConnection?.performContextMenuAction(android.R.id.undo)
+                currentInputConnection.safePerformContextMenuAction(android.R.id.undo)
             }
             UtilityKeyAction.INSERT_DATE -> {
                 val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -425,16 +430,16 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     }
 
     private fun handleBackspace() {
-        currentInputConnection?.deleteSurroundingText(1, 0)
+        currentInputConnection.safeDeleteSurroundingText(1, 0)
     }
 
     private fun handleEnter() {
-        currentInputConnection?.sendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER))
-        currentInputConnection?.sendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER))
+        currentInputConnection.safeSendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER))
+        currentInputConnection.safeSendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER))
     }
 
     private fun commitText(text: String) {
-        currentInputConnection?.commitText(text, 1)
+        currentInputConnection.safeCommitText(text, 1)
     }
 
     private fun openSettings() {
