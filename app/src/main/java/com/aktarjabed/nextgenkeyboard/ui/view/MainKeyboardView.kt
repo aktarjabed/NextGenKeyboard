@@ -50,6 +50,7 @@ fun MainKeyboardView(
     onGifKeyboardClick: () -> Unit,
     onSettingsClick: () -> Unit,
     swipePredictor: SwipePredictor,
+    swipePathProcessor: SwipePathProcessor,
     onClipboardClick: () -> Unit = {},
     onEmojiClick: () -> Unit = {},
     recentClips: List<Clip> = emptyList(),
@@ -58,8 +59,6 @@ fun MainKeyboardView(
     val layoutDirection = if (language.isRTL) LayoutDirection.Rtl else LayoutDirection.Ltr
     var showClipboard by remember { mutableStateOf(false) }
 
-    // Swipe Integration
-    val swipePathProcessor = remember { SwipePathProcessor() }
     // State to track the keyboard's global position offset
     var keyboardRootOffset by remember { mutableStateOf(Offset.Zero) }
 
@@ -158,6 +157,7 @@ fun MainKeyboardView(
                         keyRow.keys.forEach { keyData ->
                             Key(
                                 char = keyData.display,
+                                onClick = { onKeyClick(keyData.display) }, // Pass click action for accessibility
                                 onPositioned = { rect ->
                                     swipePathProcessor.registerKeyPosition(keyData.display, rect)
                                 }

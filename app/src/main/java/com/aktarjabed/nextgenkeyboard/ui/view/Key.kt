@@ -13,11 +13,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun Key(
     char: String,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onPositioned: ((Rect) -> Unit)? = null
 ) {
@@ -28,7 +33,14 @@ fun Key(
             }
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = 12.dp, vertical = 16.dp),
+            .padding(horizontal = 12.dp, vertical = 16.dp)
+            .semantics {
+                role = Role.Button
+                onClick(label = char) {
+                    onClick()
+                    true
+                }
+            },
         contentAlignment = Alignment.Center
     ) {
         Text(text = char, color = MaterialTheme.colorScheme.onPrimaryContainer)

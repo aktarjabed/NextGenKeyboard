@@ -29,6 +29,7 @@ import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import com.aktarjabed.nextgenkeyboard.feature.autocorrect.AdvancedAutocorrectEngine
 import com.aktarjabed.nextgenkeyboard.feature.gif.GiphyManager
+import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePathProcessor
 import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePredictor
 import com.aktarjabed.nextgenkeyboard.feature.voice.VoiceInputManager
 import com.aktarjabed.nextgenkeyboard.feature.voice.VoiceInputState
@@ -71,6 +72,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     @Inject lateinit var voiceInputManager: VoiceInputManager
     @Inject lateinit var giphyManager: GiphyManager
     @Inject lateinit var swipePredictor: SwipePredictor
+    @Inject lateinit var swipePathProcessor: SwipePathProcessor
 
     // ViewModel - Manually created using injected dependencies
     private lateinit var viewModel: KeyboardViewModel
@@ -280,7 +282,8 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                     onEmojiClick = {
                         _keyboardState.value = KeyboardState.Emoji
                     },
-                    swipePredictor = swipePredictor // Injected predictor
+                    swipePredictor = swipePredictor, // Injected predictor
+                    swipePathProcessor = swipePathProcessor // Injected processor
                 )
             }
 
