@@ -25,6 +25,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.aktarjabed.nextgenkeyboard.BuildConfig
+import com.aktarjabed.nextgenkeyboard.data.model.LanguageKeyboardDatabase
 import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import com.aktarjabed.nextgenkeyboard.feature.autocorrect.AdvancedAutocorrectEngine
@@ -241,6 +242,9 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
         val themeId by preferencesRepository.themePreference.collectAsState(initial = "light")
         val currentTheme = KeyboardThemes.ALL_THEMES.find { it.id == themeId } ?: KeyboardThemes.LIGHT
 
+        // Observe current language
+        val languageCode by preferencesRepository.keyboardLanguage.collectAsState(initial = "en")
+
         // Handle voice input results
         LaunchedEffect(voiceState) {
             if (voiceState is VoiceInputState.Result) {
@@ -254,27 +258,19 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
 
         when (currentKeyboardState) {
             is KeyboardState.Main -> {
-                // We need to observe language from VM or Repo
-                val defaultLanguage = com.aktarjabed.nextgenkeyboard.data.model.Language(
-                    locale = java.util.Locale.US,
-                    displayName = "English (US)",
-                    layout = com.aktarjabed.nextgenkeyboard.data.model.LanguageLayout(
-                        rows = listOf(
-                            com.aktarjabed.nextgenkeyboard.data.model.KeyRow(
-                                keys = "qwertyuiop".map { com.aktarjabed.nextgenkeyboard.data.model.KeyData(it.toString(), it.toString()) }
-                            ),
-                            com.aktarjabed.nextgenkeyboard.data.model.KeyRow(
-                                keys = "asdfghjkl".map { com.aktarjabed.nextgenkeyboard.data.model.KeyData(it.toString(), it.toString()) }
-                            ),
-                            com.aktarjabed.nextgenkeyboard.data.model.KeyRow(
-                                keys = "zxcvbnm".map { com.aktarjabed.nextgenkeyboard.data.model.KeyData(it.toString(), it.toString()) }
-                            )
-                        )
-                    )
+                // Fetch layout dynamically from database based on user preference
+                val languageLayoutDefinition = LanguageKeyboardDatabase.getLayout(languageCode)
+                val currentLanguage = com.aktarjabed.nextgenkeyboard.data.model.Language(
+                    locale = Locale(languageCode),
+                    displayName = languageLayoutDefinition.languageName,
+                    nativeName = languageLayoutDefinition.nativeName,
+                    layouts = listOf(languageLayoutDefinition.toLanguageLayout()),
+                    isRTL = languageLayoutDefinition.scriptType == com.aktarjabed.nextgenkeyboard.data.model.ScriptType.ARABIC ||
+                            languageLayoutDefinition.scriptType == com.aktarjabed.nextgenkeyboard.data.model.ScriptType.HEBREW
                 )
 
                 MainKeyboardView(
-                    language = defaultLanguage, // TODO: Get from ViewModel
+                    language = currentLanguage,
                     suggestions = dummySuggestions,
                     onSuggestionClick = { suggestion ->
                         handleKeyPress(suggestion)
