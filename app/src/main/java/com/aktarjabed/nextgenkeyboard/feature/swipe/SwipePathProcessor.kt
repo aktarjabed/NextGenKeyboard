@@ -2,6 +2,8 @@ package com.aktarjabed.nextgenkeyboard.feature.swipe
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import timber.log.Timber
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -10,12 +12,20 @@ class SwipePathProcessor @Inject constructor() {
 
     companion object {
         private const val MAX_PATH_POINTS = 500
-        private const val POINT_DEDUPLICATE_DISTANCE = 5f
+        private const val MIN_PATH_LENGTH = 3
+        private const val TAG = "SwipePathProcessor"
     }
 
-    private val keyPositions = mutableMapOf<String, Rect>()
+    // Use ConcurrentHashMap for thread safety
+    private val keyPositions = ConcurrentHashMap<String, Rect>()
 
     fun registerKeyPosition(key: String, rect: Rect) {
+        // Validate bounds before storing
+        if (rect.width <= 0 || rect.height <= 0) {
+            Timber.tag(TAG).w("Invalid key bounds for '$key': width=${rect.width}, height=${rect.height}")
+            return
+        }
+
         keyPositions[key] = rect
     }
 
@@ -24,30 +34,50 @@ class SwipePathProcessor @Inject constructor() {
     }
 
     fun findKeyAt(offset: Offset): String? {
-        return keyPositions.entries.find { (_, rect) -> rect.contains(offset) }?.key
+        return findIntersectingKey(offset)
     }
 
     fun processPathToKeySequence(path: List<Offset>): String {
-        // Filter out very short paths (accidental touches)
-        if (path.size < 3) return ""
-
-        // Safety check for excessively long paths
-        if (path.size > MAX_PATH_POINTS) {
-            // If path is too long, take a subsample to avoid performance freeze
-            // Or just return empty if it's likely noise. Subsampling is safer.
-            // For now, let's truncate to keep it safe.
-            return processPathToKeySequence(path.take(MAX_PATH_POINTS))
+        if (path.isEmpty()) {
+            return ""
         }
 
-        val filteredPath = filterByVelocity(path)
+        // Validate all offsets are finite and non-negative
+        val validPath = path.filter { offset ->
+            val isValid = offset.x.isFinite() &&
+                         offset.y.isFinite() &&
+                         offset.x >= 0 &&
+                         offset.y >= 0
+
+            if (!isValid) {
+                Timber.tag(TAG).w("Invalid offset detected: x=${offset.x}, y=${offset.y}")
+            }
+            isValid
+        }
+
+        // Size check
+        if (validPath.size < MIN_PATH_LENGTH) {
+            return ""
+        }
+
+        // Safety check for excessively long paths
+        val finalPath = if (validPath.size > MAX_PATH_POINTS) {
+            validPath.take(MAX_PATH_POINTS)
+        } else {
+            validPath
+        }
+
+        val filteredPath = filterByVelocity(finalPath)
 
         // Map path points to keys
         return filteredPath
-            .mapNotNull { offset ->
-                keyPositions.entries.find { (_, rect) -> rect.contains(offset) }?.key
-            }
-            .distinctConsecutive() // Remove consecutive duplicates
+            .mapNotNull { offset -> findIntersectingKey(offset) }
+            .distinctConsecutive()
             .joinToString("")
+    }
+
+    private fun findIntersectingKey(offset: Offset): String? {
+        return keyPositions.entries.find { (_, rect) -> rect.contains(offset) }?.key
     }
 
     private fun filterByVelocity(path: List<Offset>): List<Offset> {
