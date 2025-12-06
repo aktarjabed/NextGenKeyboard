@@ -19,6 +19,10 @@ class SwipePathProcessor @Inject constructor() {
         keyPositions[key] = rect
     }
 
+    fun clearKeys() {
+        keyPositions.clear()
+    }
+
     fun findKeyAt(offset: Offset): String? {
         return keyPositions.entries.find { (_, rect) -> rect.contains(offset) }?.key
     }
