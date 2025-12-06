@@ -15,7 +15,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backspace
-import androidx.compose.material.icons.filled.Tag
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ScrollableTabRow
@@ -41,6 +41,7 @@ fun EmojiKeyboard(
     viewModel: KeyboardViewModel,
     onEmojiSelected: (String) -> Unit,
     onBackspace: () -> Unit,
+    onBackToAlphabet: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val recentEmojis by viewModel.recentEmojis.collectAsState(initial = emptyList())
@@ -109,13 +110,16 @@ fun EmojiKeyboard(
             }
         }
 
-        // Bottom bar with backspace
+        // Bottom bar with backspace and ABC button
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            IconButton(onClick = onBackToAlphabet) {
+                Icon(Icons.Default.Keyboard, contentDescription = "Back to Alphabet")
+            }
             IconButton(onClick = onBackspace) {
                 Icon(Icons.Default.Backspace, contentDescription = "Backspace")
             }

@@ -32,6 +32,8 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import com.aktarjabed.nextgenkeyboard.data.model.Clip
 import com.aktarjabed.nextgenkeyboard.data.model.Language
@@ -47,6 +49,7 @@ fun MainKeyboardView(
     onVoiceInputClick: () -> Unit,
     onGifKeyboardClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    swipePredictor: SwipePredictor,
     onClipboardClick: () -> Unit = {},
     onEmojiClick: () -> Unit = {},
     recentClips: List<Clip> = emptyList(),
@@ -57,8 +60,8 @@ fun MainKeyboardView(
 
     // Swipe Integration
     val swipePathProcessor = remember { SwipePathProcessor() }
-    val swipePredictor = remember { SwipePredictor() }
-    var swipePath by remember { mutableStateOf<List<Offset>>(emptyList()) }
+    // State to track the keyboard's global position offset
+    var keyboardRootOffset by remember { mutableStateOf(Offset.Zero) }
 
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         Column(
@@ -121,18 +124,28 @@ fun MainKeyboardView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp)
-                    .swipeGestureDetector(
-                        onSwipeStart = { swipePath = listOf(it) },
-                        onSwipeMove = { swipePath = swipePath + it },
-                        onSwipeEnd = {
-                            val keySequence = swipePathProcessor.processPathToKeySequence(swipePath)
+                    .onGloballyPositioned { coordinates ->
+                        keyboardRootOffset = coordinates.boundsInRoot().topLeft
+                    }
+                    .detectSwipeGesture(
+                        onSwipeComplete = { localPath ->
+                            // Convert local path to global path
+                            val globalPath = localPath.map { it + keyboardRootOffset }
+                            val keySequence = swipePathProcessor.processPathToKeySequence(globalPath)
                             if (keySequence.isNotEmpty()) {
                                 val prediction = swipePredictor.predictWord(keySequence)
                                 if (prediction.isNotEmpty()) {
                                     onSuggestionClick(prediction)
                                 }
                             }
-                            swipePath = emptyList()
+                        },
+                        onTap = { localOffset ->
+                            // Convert local tap to global coordinate
+                            val globalOffset = localOffset + keyboardRootOffset
+                            val key = swipePathProcessor.findKeyAt(globalOffset)
+                            if (key != null) {
+                                onKeyClick(key)
+                            }
                         }
                     ),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -145,7 +158,6 @@ fun MainKeyboardView(
                         keyRow.keys.forEach { keyData ->
                             Key(
                                 char = keyData.display,
-                                onClick = onKeyClick,
                                 onPositioned = { rect ->
                                     swipePathProcessor.registerKeyPosition(keyData.display, rect)
                                 }
