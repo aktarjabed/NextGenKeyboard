@@ -16,6 +16,7 @@ class SwipePredictor @Inject constructor() {
     }
 
     private val root = TrieNode()
+    private var isDictionaryLoaded = false
 
     init {
         // Initialize with common words
@@ -45,10 +46,11 @@ class SwipePredictor @Inject constructor() {
             commonWords.forEach { (word, frequency) ->
                 insertWord(word, frequency)
             }
-
+            isDictionaryLoaded = true
             Timber.d("✅ Dictionary initialized with ${commonWords.size} words")
         } catch (e: Exception) {
             Timber.e(e, "Error initializing dictionary")
+            isDictionaryLoaded = false
         }
     }
 
@@ -62,6 +64,10 @@ class SwipePredictor @Inject constructor() {
     }
 
     fun predictWord(keySequence: String): String {
+        if (!isDictionaryLoaded) {
+            Timber.w("Dictionary not loaded, skipping prediction")
+            return keySequence
+        }
         if (keySequence.length < 2) return ""
         try {
             val suggestions = getSuggestions(keySequence, limit = 1)
@@ -73,6 +79,7 @@ class SwipePredictor @Inject constructor() {
     }
 
     fun getSuggestions(keySequence: String, limit: Int = 3): List<String> {
+        if (!isDictionaryLoaded) return emptyList()
         if (keySequence.length < 2) return emptyList()
 
         try {
