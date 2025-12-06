@@ -8,6 +8,8 @@ import com.aktarjabed.nextgenkeyboard.data.model.Clip
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
@@ -23,15 +25,11 @@ import javax.inject.Inject
  */
 class ClipboardRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val database: ClipboardDatabase
+    private val database: ClipboardDatabase,
+    private val preferencesRepository: PreferencesRepository
 ) {
     private val clipboardManager =
         context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-
-    companion object {
-        private const val MAX_UNPINNED_CLIPS = 500
-        private const val AUTO_DELETE_DAYS = 30
-    }
 
     // ================== FLOW OPERATIONS ==================
 
@@ -224,17 +222,20 @@ class ClipboardRepository @Inject constructor(
      */
     private suspend fun performAutoCleanup() = withContext(Dispatchers.IO) {
         try {
+            val maxItems = preferencesRepository.maxClipboardItems.first()
+            val autoDeleteDays = preferencesRepository.autoDeleteDays.first()
+
             val unpinnedCount = database.clipboardDao().getUnpinnedCount()
-            if (unpinnedCount > MAX_UNPINNED_CLIPS) {
-                val toDelete = unpinnedCount - MAX_UNPINNED_CLIPS
+            if (unpinnedCount > maxItems) {
+                val toDelete = unpinnedCount - maxItems
                 database.clipboardDao().deleteOldestUnpinned(toDelete)
-                Timber.d("Deleted $toDelete old clips (limit: $MAX_UNPINNED_CLIPS)")
+                Timber.d("Deleted $toDelete old clips (limit: $maxItems)")
             }
 
             val cutoffTimestamp = System.currentTimeMillis() -
-                TimeUnit.DAYS.toMillis(AUTO_DELETE_DAYS.toLong())
+                TimeUnit.DAYS.toMillis(autoDeleteDays.toLong())
             database.clipboardDao().deleteOlderThan(cutoffTimestamp)
-            Timber.d("Deleted clips older than $AUTO_DELETE_DAYS days")
+            Timber.d("Deleted clips older than $autoDeleteDays days")
 
         } catch (e: Exception) {
             Timber.e(e, "Error during auto-cleanup")
@@ -248,14 +249,6 @@ class ClipboardRepository @Inject constructor(
     suspend fun cleanup() = withContext(Dispatchers.IO) {
         try {
             Timber.d("Starting manual clipboard cleanup...")
-            val allItems = database.clipboardDao().getAllClipboard() // Assuming this method exists in DAO
-            // If getAllClipboard doesn't exist, we can't iterate.
-            // But we can use clearAllClips logic or specific cleanup logic.
-            // For now, we'll assume clearAll is not what is wanted, but rather a robust deep clean.
-            // Reusing deleteAllClips for simplicity if the specific iteration is not needed.
-            // But preserving "pinned" items might be desired?
-            // "cleanup" usually implies maintenance, not "delete all".
-            // So we call performAutoCleanup.
             performAutoCleanup()
             Timber.i("Manual cleanup complete")
         } catch (e: Exception) {
