@@ -58,6 +58,8 @@ class PreferencesRepository @Inject constructor(
         private const val DEFAULT_LANGUAGE = "en_US"
         private const val DEFAULT_LAYOUT = "qwerty"
         private const val DEFAULT_THEME = "auto"
+        private const val DEFAULT_AUTO_DELETE_DAYS = 7 // 1 week default
+        private const val DEFAULT_MAX_CLIPBOARD_ITEMS = 500 // 500 clips
     }
 
     // ================== GENERAL PREFERENCES ==================
@@ -159,8 +161,8 @@ class PreferencesRepository @Inject constructor(
 
     val isClipboardEnabled: Flow<Boolean> = dataStore.data.map { it[CLIPBOARD_ENABLED] ?: true }
     val isBlockSensitiveContent: Flow<Boolean> = dataStore.data.map { it[BLOCK_SENSITIVE_CONTENT] ?: true }
-    val autoDeleteDays: Flow<Int> = dataStore.data.map { it[AUTO_DELETE_DAYS] ?: 30 }
-    val maxClipboardItems: Flow<Int> = dataStore.data.map { it[MAX_CLIPBOARD_ITEMS] ?: 50 }
+    val autoDeleteDays: Flow<Int> = dataStore.data.map { it[AUTO_DELETE_DAYS] ?: DEFAULT_AUTO_DELETE_DAYS }
+    val maxClipboardItems: Flow<Int> = dataStore.data.map { it[MAX_CLIPBOARD_ITEMS] ?: DEFAULT_MAX_CLIPBOARD_ITEMS }
     val isCrashReportingEnabled: Flow<Boolean> = dataStore.data.map { it[CRASH_REPORTING_ENABLED] ?: false }
     val giphyApiKey: Flow<String> = dataStore.data.map { it[GIPHY_API_KEY] ?: "" }
 

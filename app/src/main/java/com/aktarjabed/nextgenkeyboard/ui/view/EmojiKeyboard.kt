@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.aktarjabed.nextgenkeyboard.data.model.EmojiData
 import com.aktarjabed.nextgenkeyboard.ui.viewmodel.KeyboardViewModel
 import kotlinx.coroutines.launch
 
@@ -48,20 +49,11 @@ fun EmojiKeyboard(
     val coroutineScope = rememberCoroutineScope()
 
     val emojiCategories = remember(recentEmojis) {
-        mapOf(
-            "🕐" to recentEmojis,
-            "😀" to listOf("😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊"),
-            "❤️" to listOf("❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❣️", "💕"),
-            "👋" to listOf("👋", "🤚", "🖐️", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🤟", "🤘"),
-            "🐻" to listOf("🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮"),
-            "🍔" to listOf("🍏", "🍎", "🍐", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍈", "🍒"),
-            "⚽" to listOf("⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉", "🎱", "🏓", "🏸", "🏒"),
-            "🚗" to listOf("🚗", "🚕", "🚙", "🚌", "🚎", "🏎️", "🚓", "🚑", "🚒", "🚐", "🛻", "🚚"),
-            "💡" to listOf("⌚", "📱", "💻", "⌨️", "🖥️", "🖨️", "🖱️", "🖲️", "🕹️", "🗜️", "💽", "💾")
-        )
+        // Dynamic map merging Recent with static data
+        mapOf("Recent" to recentEmojis) + EmojiData.categories.filterKeys { it != "Recent" }
     }
 
-    var selectedCategoryIndex by remember { mutableStateOf(1) } // Default to smileys
+    var selectedCategoryIndex by remember { mutableStateOf(1) } // Default to smilies (index 1 after Recent)
     val categories = emojiCategories.keys.toList()
 
     Column(modifier = modifier.fillMaxSize()) {
