@@ -57,7 +57,7 @@ class PreferencesRepository @Inject constructor(
         // Defaults
         private const val DEFAULT_LANGUAGE = "en_US"
         private const val DEFAULT_LAYOUT = "qwerty"
-        private const val DEFAULT_THEME = "auto"
+        private const val DEFAULT_THEME = "light" // Changed default to ID
         private const val DEFAULT_AUTO_DELETE_DAYS = 7 // 1 week default
         private const val DEFAULT_MAX_CLIPBOARD_ITEMS = 500 // 500 clips
     }
@@ -131,8 +131,8 @@ class PreferencesRepository @Inject constructor(
         }
     }
 
-    suspend fun setThemePreference(theme: String) {
-        safeEdit(THEME_PREFERENCE, theme, "Theme")
+    suspend fun setThemePreference(themeId: String) {
+        safeEdit(THEME_PREFERENCE, themeId, "Theme")
     }
 
     suspend fun setDarkMode(enabled: Boolean) {

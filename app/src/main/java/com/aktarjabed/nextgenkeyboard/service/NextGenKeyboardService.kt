@@ -29,11 +29,14 @@ import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import com.aktarjabed.nextgenkeyboard.feature.autocorrect.AdvancedAutocorrectEngine
 import com.aktarjabed.nextgenkeyboard.feature.gif.GiphyManager
+import com.aktarjabed.nextgenkeyboard.feature.keyboard.UtilityKey
+import com.aktarjabed.nextgenkeyboard.feature.keyboard.UtilityKeyAction
 import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePathProcessor
 import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePredictor
 import com.aktarjabed.nextgenkeyboard.feature.voice.VoiceInputManager
 import com.aktarjabed.nextgenkeyboard.feature.voice.VoiceInputState
 import com.aktarjabed.nextgenkeyboard.ui.screens.MainActivity
+import com.aktarjabed.nextgenkeyboard.ui.theme.KeyboardThemes
 import com.aktarjabed.nextgenkeyboard.ui.theme.NextGenKeyboardTheme
 import com.aktarjabed.nextgenkeyboard.ui.view.EmojiKeyboard
 import com.aktarjabed.nextgenkeyboard.ui.view.GifKeyboard
@@ -50,7 +53,11 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -73,6 +80,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     @Inject lateinit var giphyManager: GiphyManager
     @Inject lateinit var swipePredictor: SwipePredictor
     @Inject lateinit var swipePathProcessor: SwipePathProcessor
+    @Inject lateinit var utilityKeys: List<UtilityKey>
 
     // ViewModel - Manually created using injected dependencies
     private lateinit var viewModel: KeyboardViewModel
@@ -229,6 +237,10 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
 
         val voiceState by voiceInputManager.voiceState.collectAsState()
 
+        // Observe current theme ID
+        val themeId by preferencesRepository.themePreference.collectAsState(initial = "light")
+        val currentTheme = KeyboardThemes.ALL_THEMES.find { it.id == themeId } ?: KeyboardThemes.LIGHT
+
         // Handle voice input results
         LaunchedEffect(voiceState) {
             if (voiceState is VoiceInputState.Result) {
@@ -283,7 +295,10 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                         _keyboardState.value = KeyboardState.Emoji
                     },
                     swipePredictor = swipePredictor, // Injected predictor
-                    swipePathProcessor = swipePathProcessor // Injected processor
+                    swipePathProcessor = swipePathProcessor, // Injected processor
+                    utilityKeys = utilityKeys, // Injected utility keys
+                    onUtilityKeyClick = { action -> handleUtilityAction(action) },
+                    theme = currentTheme // Pass resolved theme
                 )
             }
 
@@ -331,6 +346,42 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     fun VoiceInputViewWrapper(onClose: () -> Unit) {
         // Placeholder for VoiceInputView
         androidx.compose.material3.Text("Voice Input (Tap to Close)", modifier = androidx.compose.ui.Modifier.androidx.compose.foundation.clickable { onClose() })
+    }
+
+    private fun handleUtilityAction(action: UtilityKeyAction) {
+        when (action) {
+            UtilityKeyAction.COPY -> {
+                val selectedText = currentInputConnection?.getSelectedText(0)
+                if (!selectedText.isNullOrEmpty()) {
+                    serviceScope.launch { clipboardRepository.copyToClipboard(selectedText.toString(), "Selection") }
+                }
+            }
+            UtilityKeyAction.PASTE_CLIPBOARD -> {
+                serviceScope.launch {
+                    val text = clipboardRepository.pasteFromClipboard()
+                    if (!text.isNullOrEmpty()) {
+                        commitText(text)
+                    }
+                }
+            }
+            UtilityKeyAction.SELECT_ALL -> {
+                currentInputConnection?.performContextMenuAction(android.R.id.selectAll)
+            }
+            UtilityKeyAction.CUT -> {
+                currentInputConnection?.performContextMenuAction(android.R.id.cut)
+            }
+            UtilityKeyAction.UNDO_LAST_DELETE -> {
+                // Not standard Android API, often requires tracking history.
+                // Fallback to system undo if available.
+                currentInputConnection?.performContextMenuAction(android.R.id.undo)
+            }
+            UtilityKeyAction.INSERT_DATE -> {
+                val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                commitText(date)
+            }
+            // Add other cases as needed
+            else -> {}
+        }
     }
 
     private fun handleKeyPress(text: String) {
