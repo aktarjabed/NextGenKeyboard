@@ -34,7 +34,7 @@ fun Modifier.detectSwipeGesture(
         } while (change.pressed)
 
         if (isSwipe) {
-            onSwipeComplete(path)
+            onSwipeComplete(path.toList())
         } else {
             onTap(down.position)
         }
