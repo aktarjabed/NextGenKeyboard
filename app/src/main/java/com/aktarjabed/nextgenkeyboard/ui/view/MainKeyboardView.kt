@@ -41,6 +41,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.DisposableEffect
 import com.aktarjabed.nextgenkeyboard.data.model.Clip
 import com.aktarjabed.nextgenkeyboard.data.model.Language
 import com.aktarjabed.nextgenkeyboard.feature.keyboard.UtilityKey
@@ -74,6 +75,13 @@ fun MainKeyboardView(
 
     // State to track the keyboard's global position offset
     var keyboardRootOffset by remember { mutableStateOf(Offset.Zero) }
+
+    // Clear stale key positions when the language layout changes
+    DisposableEffect(language) {
+        onDispose {
+            swipePathProcessor.clearKeyPositions()
+        }
+    }
 
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         Column(
