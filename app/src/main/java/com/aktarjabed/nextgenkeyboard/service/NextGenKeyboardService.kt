@@ -133,6 +133,19 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
         }
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // Explicitly recreate the input view to ensure layout adapts to new configuration
+        // This is safe even if the system plans to restart the service, but ensures correct state
+        // if the service is retained.
+        try {
+            val newInputView = onCreateInputView()
+            setInputView(newInputView)
+        } catch (e: Exception) {
+            logError("Failed to update input view on configuration change", e)
+        }
+    }
+
     private fun initializeComponents() {
         // Construct ViewModel with injected dependencies
         viewModel = KeyboardViewModel(
