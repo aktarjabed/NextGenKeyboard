@@ -46,7 +46,13 @@ import com.aktarjabed.nextgenkeyboard.ui.viewmodel.KeyboardViewModel
 import com.aktarjabed.nextgenkeyboard.util.logError
 import com.aktarjabed.nextgenkeyboard.util.logInfo
 import com.aktarjabed.nextgenkeyboard.util.logWarning
+import com.aktarjabed.nextgenkeyboard.util.safeCommitText
+import com.aktarjabed.nextgenkeyboard.util.safeDeleteSurroundingText
+import com.aktarjabed.nextgenkeyboard.util.safeGetSelectedText
+import com.aktarjabed.nextgenkeyboard.util.safePerformContextMenuAction
+import com.aktarjabed.nextgenkeyboard.util.safeSendKeyEvent
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -87,8 +93,11 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     private lateinit var viewModel: KeyboardViewModel
 
     // Lifecycle & State Management
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        logError("Uncaught coroutine exception", throwable)
+    }
     private val serviceJob = SupervisorJob()
-    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
+    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob + exceptionHandler)
 
     // Compose & UI
     private var composeView: ComposeView? = null
@@ -347,7 +356,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     private fun handleUtilityAction(action: UtilityKeyAction) {
         when (action) {
             UtilityKeyAction.COPY -> {
-                val selectedText = currentInputConnection?.getSelectedText(0)
+                val selectedText = currentInputConnection.safeGetSelectedText(0)
                 if (!selectedText.isNullOrEmpty()) {
                     serviceScope.launch { clipboardRepository.copyToClipboard(selectedText.toString(), "Selection") }
                 }
@@ -361,15 +370,15 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                 }
             }
             UtilityKeyAction.SELECT_ALL -> {
-                currentInputConnection?.performContextMenuAction(android.R.id.selectAll)
+                currentInputConnection.safePerformContextMenuAction(android.R.id.selectAll)
             }
             UtilityKeyAction.CUT -> {
-                currentInputConnection?.performContextMenuAction(android.R.id.cut)
+                currentInputConnection.safePerformContextMenuAction(android.R.id.cut)
             }
             UtilityKeyAction.UNDO_LAST_DELETE -> {
                 // Not standard Android API, often requires tracking history.
                 // Fallback to system undo if available.
-                currentInputConnection?.performContextMenuAction(android.R.id.undo)
+                currentInputConnection.safePerformContextMenuAction(android.R.id.undo)
             }
             UtilityKeyAction.INSERT_DATE -> {
                 val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -421,16 +430,16 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     }
 
     private fun handleBackspace() {
-        currentInputConnection?.deleteSurroundingText(1, 0)
+        currentInputConnection.safeDeleteSurroundingText(1, 0)
     }
 
     private fun handleEnter() {
-        currentInputConnection?.sendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER))
-        currentInputConnection?.sendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER))
+        currentInputConnection.safeSendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER))
+        currentInputConnection.safeSendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER))
     }
 
     private fun commitText(text: String) {
-        currentInputConnection?.commitText(text, 1)
+        currentInputConnection.safeCommitText(text, 1)
     }
 
     private fun openSettings() {
