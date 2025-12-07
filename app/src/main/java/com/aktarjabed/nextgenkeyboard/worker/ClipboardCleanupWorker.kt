@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.aktarjabed.nextgenkeyboard.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -21,15 +20,10 @@ class ClipboardCleanupWorker @AssistedInject constructor(
         return try {
             Timber.d("🧹 Starting scheduled clipboard cleanup")
 
-            val result = clipboardRepository.performManualCleanup()
+            clipboardRepository.cleanup()
 
-            if (result.isSuccess) {
-                Timber.d("✅ Scheduled cleanup completed successfully")
-                Result.success()
-            } else {
-                Timber.e("❌ Scheduled cleanup failed: ${result.exceptionOrNull()}")
-                Result.retry()
-            }
+            Timber.d("✅ Scheduled cleanup completed successfully")
+            Result.success()
         } catch (e: Exception) {
             Timber.e(e, "Error during scheduled cleanup")
             Result.failure()

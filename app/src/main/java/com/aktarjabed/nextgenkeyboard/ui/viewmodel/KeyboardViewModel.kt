@@ -6,6 +6,7 @@ import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import com.aktarjabed.nextgenkeyboard.feature.ai.AiContextManager
 import com.aktarjabed.nextgenkeyboard.feature.ai.SmartPredictionUseCase
+import com.giphy.sdk.core.models.Media
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -39,6 +40,17 @@ class KeyboardViewModel @Inject constructor(
 
     // Emoji support
     val recentEmojis: Flow<List<String>> = preferencesRepository.recentEmojis
+
+    // GIF Support
+    private val _trendingGifs = MutableStateFlow<List<Media>>(emptyList())
+    val trendingGifs: StateFlow<List<Media>> = _trendingGifs.asStateFlow()
+
+    private val _searchedGifs = MutableStateFlow<List<Media>>(emptyList())
+    val searchedGifs: StateFlow<List<Media>> = _searchedGifs.asStateFlow()
+
+    fun searchGifs(query: String) {
+        // Stub
+    }
 
     // Prediction Debounce
     private var predictionJob: Job? = null

@@ -7,7 +7,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.ContextCompat
-import com.aktarjabed.nextgenkeyboard.data.db.ClipboardDatabase
+import com.aktarjabed.nextgenkeyboard.data.local.ClipboardDatabase
 import com.aktarjabed.nextgenkeyboard.data.model.Clip
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers

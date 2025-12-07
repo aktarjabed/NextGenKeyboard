@@ -46,12 +46,15 @@ class SwipePathProcessor @Inject constructor(
     }
 
     fun processPathToKeySequence(path: List<Offset>): String {
-        // Gap #2: Input validation
-        require(path.size <= MAX_PATH_LENGTH) {
-            "Path too long: ${path.size} > $MAX_PATH_LENGTH"
+        // Handle long paths gracefully by truncating or sampling
+        val processingPath = if (path.size > MAX_PATH_LENGTH) {
+            Timber.w("Path too long (${path.size}), truncating to $MAX_PATH_LENGTH")
+            path.take(MAX_PATH_LENGTH)
+        } else {
+            path
         }
 
-        val validatedPath = validateAndFilterPath(path)
+        val validatedPath = validateAndFilterPath(processingPath)
         if (validatedPath.size < MIN_PATH_LENGTH) {
             Timber.d("Path too short or invalid: ${path.size} points")
             return ""

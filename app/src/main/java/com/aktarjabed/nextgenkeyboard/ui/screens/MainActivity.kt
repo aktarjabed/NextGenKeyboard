@@ -1,12 +1,12 @@
 package com.aktarjabed.nextgenkeyboard.ui.screens
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,22 +16,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.aktarjabed.nextgenkeyboard.R
-import android.content.Context
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.aktarjabed.nextgenkeyboard.ui.theme.NextGenKeyboardTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -49,7 +38,7 @@ class MainActivity : ComponentActivity() {
         Timber.d("MainActivity created")
 
         val prefs = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        val isFirstLaunch = prefs.getBoolean("is_first_launch", true)
+        // var isFirstLaunch = prefs.getBoolean("is_first_launch", true) // Unused for now
 
         setContent {
             NextGenKeyboardTheme {
@@ -82,6 +71,7 @@ fun MainScreen() {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Assuming Icons.Default.Keyboard exists or using a substitute
                         Icon(
                             imageVector = Icons.Default.Keyboard,
                             contentDescription = "App Icon",
@@ -332,7 +322,7 @@ fun SetupStepCard(
 
 @Composable
 fun FeatureCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String,
     description: String
 ) {
@@ -372,7 +362,7 @@ fun FeatureCard(
     }
 }
 
-fun isKeyboardEnabledInSystem(context: android.content.Context): Boolean {
+fun isKeyboardEnabledInSystem(context: Context): Boolean {
     return try {
         val inputMethodManager = context.getSystemService(InputMethodManager::class.java)
         val enabledInputMethods = inputMethodManager.enabledInputMethodList
@@ -383,7 +373,7 @@ fun isKeyboardEnabledInSystem(context: android.content.Context): Boolean {
     }
 }
 
-fun isKeyboardSelectedInSystem(context: android.content.Context): Boolean {
+fun isKeyboardSelectedInSystem(context: Context): Boolean {
     return try {
         val currentInputMethod = Settings.Secure.getString(
             context.contentResolver,
@@ -393,21 +383,5 @@ fun isKeyboardSelectedInSystem(context: android.content.Context): Boolean {
     } catch (e: Exception) {
         Timber.e(e, "Error checking keyboard selected status")
         false
-    }
-                    var showOnboarding by remember { mutableStateOf(isFirstLaunch) }
-
-                    if (showOnboarding) {
-                        OnboardingScreen(
-                            onComplete = {
-                                showOnboarding = false
-                                prefs.edit().putBoolean("is_first_launch", false).apply()
-                            }
-                        )
-                    } else {
-                        MainScreen()
-                    }
-                }
-            }
-        }
     }
 }

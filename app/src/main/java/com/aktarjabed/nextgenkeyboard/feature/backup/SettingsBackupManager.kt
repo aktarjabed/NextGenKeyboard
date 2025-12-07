@@ -65,9 +65,9 @@ class SettingsBackupManager @Inject constructor(
                     blockSensitiveContent = preferencesRepository.isBlockSensitiveContent.first(),
                     autoDeleteDays = preferencesRepository.autoDeleteDays.first(),
                     maxClipboardItems = preferencesRepository.maxClipboardItems.first(),
-                    currentLanguage = preferencesRepository.currentLanguage.first(),
-                    enabledLanguages = preferencesRepository.enabledLanguages.first(),
-                    currentTheme = preferencesRepository.currentTheme.first()
+                    currentLanguage = preferencesRepository.keyboardLanguage.first(),
+                    enabledLanguages = emptyList(), // Not supported yet
+                    currentTheme = preferencesRepository.themePreference.first()
                 )
             )
 
@@ -115,9 +115,9 @@ class SettingsBackupManager @Inject constructor(
                 preferencesRepository.setAutoDeleteDays(autoDeleteDays)
                 preferencesRepository.setMaxClipboardItems(maxClipboardItems)
                 // Apply language and theme settings
-                preferencesRepository.setCurrentLanguage(currentLanguage)
-                preferencesRepository.setEnabledLanguages(enabledLanguages)
-                preferencesRepository.setCurrentTheme(currentTheme)
+                preferencesRepository.setKeyboardLanguage(currentLanguage)
+                // preferencesRepository.setEnabledLanguages(enabledLanguages) // Not supported yet
+                preferencesRepository.setThemePreference(currentTheme)
             }
 
             Timber.d("✅ Settings imported successfully")

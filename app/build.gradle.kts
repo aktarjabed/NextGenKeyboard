@@ -83,11 +83,12 @@ android {
 dependencies {
     // Core Android
     implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
     implementation("androidx.activity:activity-compose:1.9.2")
 
     // InputMethod (required for NextGenKeyboardService)
-    implementation("androidx.inputmethod:inputmethod:1.0.0-alpha01")
+    // implementation("androidx.inputmethod:inputmethod:1.0.0-alpha01")
 
     // Compose
     implementation(platform("androidx.compose:compose-bom:2025.10.01"))
@@ -117,7 +118,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
     // Network & Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3!!")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.coil-kt:coil-gif:2.7.0")
 
@@ -140,6 +141,9 @@ dependencies {
 
     // Testing
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("com.google.dagger:hilt-android-testing:2.52")
+    kspTest("com.google.dagger:hilt-android-compiler:2.52")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.10.01"))
