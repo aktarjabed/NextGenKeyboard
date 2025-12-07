@@ -54,7 +54,3 @@ class KeyboardState {
         _correctionType.value = CorrectionType.NONE
     }
 }
-
-enum class CorrectionType {
-    NONE, AUTO_CORRECT, SUGGEST_NEXT
-}

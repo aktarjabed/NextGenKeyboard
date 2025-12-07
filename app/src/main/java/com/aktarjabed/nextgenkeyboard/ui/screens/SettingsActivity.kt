@@ -14,7 +14,7 @@ class SettingsActivity : ComponentActivity() {
         setContent {
             NextGenKeyboardTheme {
                 Surface {
-                    SettingsScreen()
+                    SettingsScreen(onNavigateBack = { finish() })
                 }
             }
         }

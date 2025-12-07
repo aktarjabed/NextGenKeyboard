@@ -317,8 +317,8 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                 // Fetch layout dynamically from database based on user preference
                 val languageLayoutDefinition = LanguageKeyboardDatabase.getLayout(languageCode)
                 val currentLanguage = com.aktarjabed.nextgenkeyboard.data.model.Language(
-                    locale = Locale(languageCode),
-                    displayName = languageLayoutDefinition.languageName,
+                    code = languageCode,
+                    name = languageLayoutDefinition.languageName,
                     nativeName = languageLayoutDefinition.nativeName,
                     layouts = listOf(languageLayoutDefinition.toLanguageLayout()),
                     isRTL = languageLayoutDefinition.scriptType == com.aktarjabed.nextgenkeyboard.data.model.ScriptType.ARABIC ||
@@ -397,7 +397,10 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     @Composable
     fun VoiceInputViewWrapper(onClose: () -> Unit) {
         // Placeholder for VoiceInputView
-        androidx.compose.material3.Text("Voice Input (Tap to Close)", modifier = androidx.compose.ui.Modifier.androidx.compose.foundation.clickable { onClose() })
+        androidx.compose.material3.Text(
+            "Voice Input (Tap to Close)",
+            modifier = androidx.compose.ui.Modifier.androidx.compose.foundation.clickable { onClose() }
+        )
     }
 
     private fun handleUtilityAction(action: UtilityKeyAction) {
@@ -551,11 +554,4 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
             Timber.e(e, "Error applying security mode")
         }
     }
-}
-
-sealed class KeyboardState {
-    object Main : KeyboardState()
-    object Voice : KeyboardState()
-    object Gif : KeyboardState()
-    object Emoji : KeyboardState()
 }

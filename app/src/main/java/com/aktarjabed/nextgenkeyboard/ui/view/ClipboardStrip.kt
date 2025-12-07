@@ -51,13 +51,14 @@ fun ClipboardItemChip(
         color = MaterialTheme.colorScheme.secondaryContainer,
         modifier = Modifier.height(36.dp)
     ) {
-        Text(
-            text = text.take(20).replace("\n", " "),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-                .align(Alignment.CenterVertically)
-        )
+        androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = text.take(20).replace("\n", " "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            )
+        }
     }
 }

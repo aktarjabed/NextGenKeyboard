@@ -20,10 +20,6 @@ class GeminiPredictionClient @Inject constructor() : AiPredictionClient {
                     modelName = "gemini-1.5-flash", // Use a fast model
                     apiKey = apiKey,
                     generationConfig = GenerationConfig.builder()
-                        .temperature(0.2f) // Low temperature for deterministic/focused predictions
-                        .topK(3)
-                        .topP(0.8f)
-                        .maxOutputTokens(20) // We only need a few words
                         .build()
                 )
             } catch (e: Exception) {

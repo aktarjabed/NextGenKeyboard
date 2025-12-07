@@ -4,4 +4,5 @@ sealed class KeyboardState {
     object Main : KeyboardState()
     object Voice : KeyboardState()
     object Gif : KeyboardState()
+    object Emoji : KeyboardState()
 }
