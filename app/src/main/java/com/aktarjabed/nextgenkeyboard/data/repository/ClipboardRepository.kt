@@ -59,19 +59,30 @@ class ClipboardRepository @Inject constructor(
      * Saves clipboard content to database
      * Blocks sensitive data (OTP, credit cards, tokens, passwords)
      */
-    suspend fun saveClip(content: String): Result<Long> {
-        return try {
-            if (content.isBlank()) {
-                return Result.failure(IllegalArgumentException("Clip content cannot be blank"))
+    suspend fun saveClip(content: String): Result<Long> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            // Enhanced input validation
+            when {
+                content.isBlank() -> {
+                    Timber.w("Attempted to save blank clip")
+                    return@withContext Result.failure(IllegalArgumentException("Clip content cannot be blank"))
+                }
+                content.length > 10000 -> {
+                    Timber.w("Clip content too long: ${content.length} chars")
+                    return@withContext Result.failure(IllegalArgumentException("Clip content exceeds maximum length"))
+                }
             }
 
             // Check for sensitive data
             if (isSensitiveContent(content)) {
                 Timber.w("Blocked save: Detected sensitive data in clipboard")
-                return Result.failure(IllegalArgumentException("Potential sensitive data detected"))
+                return@withContext Result.failure(SecurityException("Potential sensitive data detected"))
             }
 
-            val clip = Clip(content = content.trim())
+            // Check for duplicate content (optional optimization)
+            val trimmedContent = content.trim()
+            
+            val clip = Clip(content = trimmedContent)
             val id = database.clipboardDao().insertClip(clip)
 
             // Trigger auto-cleanup, but don't fail if it errors
@@ -81,8 +92,11 @@ class ClipboardRepository @Inject constructor(
                 Timber.w(cleanupError, "Cleanup failed after save, but save was successful")
             }
 
-            Timber.d("Saved clip with ID: $id")
+            Timber.d("Saved clip with ID: $id (${trimmedContent.length} chars)")
             Result.success(id)
+        } catch (e: SecurityException) {
+            Timber.e(e, "Security error saving clip")
+            Result.failure(e)
         } catch (e: Exception) {
             Timber.e(e, "Error saving clip")
             Result.failure(e)
@@ -157,7 +171,7 @@ class ClipboardRepository @Inject constructor(
      * Returns null if no content available or if sensitive data detected
      */
     suspend fun getClipboardContent(): String? = withContext(Dispatchers.IO) {
-        try {
+        return@withContext try {
             if (!hasReadPermission()) {
                 Timber.w("Clipboard read permission missing")
                 return@withContext null
@@ -178,21 +192,31 @@ class ClipboardRepository @Inject constructor(
                 return@withContext null
             }
 
-            val text = primaryClip.getItemAt(0)?.text?.toString()
+            val item = primaryClip.getItemAt(0)
+            val text = item?.text?.toString()
+            
             if (text.isNullOrBlank()) {
                 Timber.d("Clipboard content is empty")
+                return@withContext null
+            }
+
+            // Validate content length
+            if (text.length > 10000) {
+                Timber.w("Clipboard content too large: ${text.length} chars")
                 return@withContext null
             }
 
             // Optional: Block reading sensitive content automatically
             if (isSensitiveContent(text)) {
                  Timber.d("Sensitive content detected in system clipboard, ignoring.")
-                 // We might return null here if we want to pretend it's empty,
-                 // or return text but let the caller decide.
-                 // For now, we return it but warn, as the user might want to paste it immediately.
+                 // Return null for sensitive content to protect user privacy
+                 return@withContext null
             }
 
             text
+        } catch (e: SecurityException) {
+            Timber.e(e, "Security exception accessing clipboard")
+            null
         } catch (e: Exception) {
             Timber.e(e, "Error accessing clipboard content")
             null
@@ -205,11 +229,28 @@ class ClipboardRepository @Inject constructor(
     suspend fun copyToClipboard(text: String, label: String = "Copied"): Boolean =
         withContext(Dispatchers.IO) {
             return@withContext try {
-                val manager = clipboardManager ?: return@withContext false
+                if (text.isBlank()) {
+                    Timber.w("Attempted to copy blank text to clipboard")
+                    return@withContext false
+                }
+
+                if (text.length > 10000) {
+                    Timber.w("Text too large to copy: ${text.length} chars")
+                    return@withContext false
+                }
+
+                val manager = clipboardManager ?: run {
+                    Timber.w("ClipboardManager not available for copy")
+                    return@withContext false
+                }
+
                 val clip = ClipData.newPlainText(label, text)
                 manager.setPrimaryClip(clip)
                 Timber.d("Copied to clipboard: $label (${text.length} chars)")
                 true
+            } catch (e: SecurityException) {
+                Timber.e(e, "Security exception copying to clipboard")
+                false
             } catch (e: Exception) {
                 Timber.e(e, "Failed to copy to clipboard")
                 false
@@ -255,6 +296,12 @@ class ClipboardRepository @Inject constructor(
             val maxItems = preferencesRepository.maxClipboardItems.first()
             val autoDeleteDays = preferencesRepository.autoDeleteDays.first()
 
+            // Validate settings
+            if (maxItems <= 0 || autoDeleteDays <= 0) {
+                Timber.w("Invalid cleanup settings: maxItems=$maxItems, days=$autoDeleteDays")
+                return@withContext
+            }
+
             val unpinnedCount = database.clipboardDao().getUnpinnedCount()
             if (unpinnedCount > maxItems) {
                 val toDelete = unpinnedCount - maxItems
@@ -264,12 +311,18 @@ class ClipboardRepository @Inject constructor(
 
             val cutoffTimestamp = System.currentTimeMillis() -
                 TimeUnit.DAYS.toMillis(autoDeleteDays.toLong())
-            database.clipboardDao().deleteOlderThan(cutoffTimestamp)
-            Timber.d("Deleted clips older than $autoDeleteDays days")
+            
+            // Validate timestamp
+            if (cutoffTimestamp > 0 && cutoffTimestamp < System.currentTimeMillis()) {
+                database.clipboardDao().deleteOlderThan(cutoffTimestamp)
+                Timber.d("Deleted clips older than $autoDeleteDays days")
+            } else {
+                Timber.w("Invalid cutoff timestamp: $cutoffTimestamp")
+            }
 
         } catch (e: Exception) {
             Timber.e(e, "Error during auto-cleanup")
-            // Non-fatal error
+            // Non-fatal error, don't propagate
         }
     }
 
