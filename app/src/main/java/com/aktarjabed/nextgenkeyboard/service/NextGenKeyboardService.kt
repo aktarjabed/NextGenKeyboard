@@ -29,6 +29,8 @@ import com.aktarjabed.nextgenkeyboard.BuildConfig
 import com.aktarjabed.nextgenkeyboard.data.model.LanguageKeyboardDatabase
 import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
+import com.aktarjabed.nextgenkeyboard.feature.ai.AiContextManager
+import com.aktarjabed.nextgenkeyboard.feature.ai.SmartPredictionUseCase
 import com.aktarjabed.nextgenkeyboard.feature.autocorrect.AdvancedAutocorrectEngine
 import com.aktarjabed.nextgenkeyboard.feature.gif.GiphyManager
 import com.aktarjabed.nextgenkeyboard.feature.keyboard.UtilityKey
@@ -43,6 +45,7 @@ import com.aktarjabed.nextgenkeyboard.ui.theme.NextGenKeyboardTheme
 import com.aktarjabed.nextgenkeyboard.ui.view.EmojiKeyboard
 import com.aktarjabed.nextgenkeyboard.ui.view.GifKeyboard
 import com.aktarjabed.nextgenkeyboard.ui.view.MainKeyboardView
+import com.aktarjabed.nextgenkeyboard.ui.viewmodel.KeyboardUiState
 import com.aktarjabed.nextgenkeyboard.ui.viewmodel.KeyboardViewModel
 import com.aktarjabed.nextgenkeyboard.util.logError
 import com.aktarjabed.nextgenkeyboard.util.logInfo
@@ -89,6 +92,10 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     @Inject lateinit var swipePredictor: SwipePredictor
     @Inject lateinit var swipePathProcessor: SwipePathProcessor
     @Inject lateinit var utilityKeys: List<UtilityKey>
+
+    // Injected for ViewModel creation
+    @Inject lateinit var smartPredictionUseCase: SmartPredictionUseCase
+    @Inject lateinit var aiContextManager: AiContextManager
 
     // ViewModel - Manually created using injected dependencies
     private lateinit var viewModel: KeyboardViewModel
@@ -150,7 +157,9 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
         // Construct ViewModel with injected dependencies
         viewModel = KeyboardViewModel(
             clipboardRepository = clipboardRepository,
-            preferencesRepository = preferencesRepository
+            preferencesRepository = preferencesRepository,
+            smartPredictionUseCase = smartPredictionUseCase,
+            aiContextManager = aiContextManager
         )
 
         // Initialize Giphy
@@ -190,7 +199,14 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
 
         try {
-            currentPackageName = attribute?.packageName
+            // Check for package change to clear context history
+            val newPackageName = attribute?.packageName
+            if (newPackageName != currentPackageName) {
+                aiContextManager.clearHistory()
+                Timber.d("Context history cleared due to package change: $currentPackageName -> $newPackageName")
+            }
+            currentPackageName = newPackageName
+
             val inputType = attribute?.inputType ?: 0
 
             // Detect password fields
@@ -232,6 +248,9 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
         super.onFinishInput()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
         try {
+            // Cancel any pending predictions
+            // (ViewModel handles clearing state onInputStarted)
+
             isPasswordMode = false
             currentPackageName = null
 
@@ -270,8 +289,8 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     @Composable
     private fun KeyboardContent() {
         val currentKeyboardState by keyboardState.collectAsState()
-        val suggestions by viewModel.uiState.collectAsState() // Fixing suggestion flow access
-        val dummySuggestions = emptyList<String>()
+        val uiState by viewModel.uiState.collectAsState()
+        val suggestions = (uiState as? KeyboardUiState.Ready)?.suggestions ?: emptyList()
 
         val voiceState by voiceInputManager.voiceState.collectAsState()
 
@@ -308,7 +327,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
 
                 MainKeyboardView(
                     language = currentLanguage,
-                    suggestions = dummySuggestions,
+                    suggestions = suggestions,
                     onSuggestionClick = { suggestion ->
                         handleKeyPress(suggestion)
                     },
@@ -450,6 +469,14 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                 if (!isPasswordMode) {
                     autocorrectEngine.learnWord(processedText)
                 }
+
+                // Trigger prediction update after key press
+                // Note: Ideally, we should observe text changes, but extracting text
+                // from InputConnection every time can be slow.
+                // We'll update context lazily or on specific events.
+                val textBeforeCursor = currentInputConnection?.getTextBeforeCursor(100, 0)?.toString() ?: ""
+                viewModel.onTextChanged(textBeforeCursor)
+
             } catch (e: Exception) {
                 logError("Error processing key press", e)
                 commitText(text)
@@ -468,6 +495,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
 
     private fun commitText(text: String) {
         currentInputConnection.safeCommitText(text, 1)
+        viewModel.onTextCommitted(text)
     }
 
     private fun openSettings() {
