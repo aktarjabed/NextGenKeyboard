@@ -78,7 +78,7 @@ class SwipePathProcessor @Inject constructor(
     private fun filterByVelocity(path: List<Offset>): List<Offset> {
         if (path.size < 3) return path
 
-        return path.windowed(3, partialWindows = true).mapNotNull { window ->
+        val filtered = path.windowed(3, partialWindows = true).mapNotNull { window ->
             when (window.size) {
                 3 -> {
                     val (p1, p2, p3) = window
@@ -89,6 +89,9 @@ class SwipePathProcessor @Inject constructor(
                 else -> null
             }
         }
+
+        // Ensure the first point is preserved as it's the anchor
+        return listOf(path.first()) + filtered
     }
 
     // Public method to find key at a specific point (used for taps)
