@@ -26,6 +26,7 @@ android {
         vectorDrawables.useSupportLibrary = true
 
         buildConfigField("String", "GIPHY_API_KEY", "\"${project.findProperty("GIPHY_API_KEY") ?: ""}\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"${project.findProperty("GEMINI_API_KEY") ?: ""}\"")
     }
 
     buildTypes {
@@ -122,6 +123,9 @@ dependencies {
 
     // Giphy
     implementation("com.giphy.sdk:ui:2.3.15")
+
+    // Google AI (Gemini)
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
