@@ -161,7 +161,8 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
             clipboardRepository = clipboardRepository,
             preferencesRepository = preferencesRepository,
             smartPredictionUseCase = smartPredictionUseCase,
-            aiContextManager = aiContextManager
+            aiContextManager = aiContextManager,
+            giphyManager = giphyManager
         )
 
         // Initialize Giphy

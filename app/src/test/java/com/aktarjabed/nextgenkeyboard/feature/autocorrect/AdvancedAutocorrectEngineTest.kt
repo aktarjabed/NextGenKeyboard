@@ -2,9 +2,10 @@ package com.aktarjabed.nextgenkeyboard.feature.autocorrect
 
 import android.content.Context
 import android.content.res.Resources
-import com.google.common.truth.Truth.assertThat
-import com.aktarjabed.nextgenkeyboard.data.models.Language
 import com.aktarjabed.nextgenkeyboard.data.model.Language
+import com.aktarjabed.nextgenkeyboard.state.CorrectionType
+// import com.aktarjabed.nextgenkeyboard.state.WordContext // Removed incorrect import
+import com.google.common.truth.Truth.assertThat
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -17,7 +18,7 @@ import org.robolectric.annotation.Config
 import java.io.ByteArrayInputStream
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28])
+@Config(sdk = [30])
 class AdvancedAutocorrectEngineTest {
 
     private lateinit var context: Context
@@ -47,7 +48,11 @@ class AdvancedAutocorrectEngineTest {
         // Given
         val word = "teh"
         val context = WordContext()
-        val language = Language("en", "English")
+        val language = Language(
+            code = "en",
+            name = "English",
+            nativeName = "English"
+        )
 
         // When
         val suggestions = autocorrectEngine.getAdvancedSuggestions(word, context, language)
@@ -62,7 +67,11 @@ class AdvancedAutocorrectEngineTest {
         // Given
         val word = "hello"
         val context = WordContext(isStartOfSentence = true)
-        val language = Language("en", "English")
+        val language = Language(
+            code = "en",
+            name = "English",
+            nativeName = "English"
+        )
 
         // When
         val suggestions = autocorrectEngine.getAdvancedSuggestions(word, context, language)
@@ -80,14 +89,17 @@ class AdvancedAutocorrectEngineTest {
         val newWord = "testword"
         autocorrectEngine.learnWord(newWord)
         val context = WordContext()
-        val language = Language("en", "English")
+        val language = Language(
+            code = "en",
+            name = "English",
+            nativeName = "English"
+        )
 
         // When
         val suggestions = autocorrectEngine.getAdvancedSuggestions(newWord, context, language)
 
         // Then
         // After learning, the word should be considered correct, so no spelling suggestions should be returned.
-        // Contextual suggestions might still appear.
         val spellingSuggestion = suggestions.find { it.type == CorrectionType.SPELLING }
         assertThat(spellingSuggestion).isNull()
     }
@@ -97,7 +109,11 @@ class AdvancedAutocorrectEngineTest {
         // Given
         val word = "a"
         val context = WordContext()
-        val language = Language("en", "English")
+        val language = Language(
+            code = "en",
+            name = "English",
+            nativeName = "English"
+        )
 
         // When
         val suggestions = autocorrectEngine.getAdvancedSuggestions(word, context, language)

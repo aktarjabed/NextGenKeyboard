@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.aktarjabed.nextgenkeyboard.data.model.EmojiData
 import com.aktarjabed.nextgenkeyboard.ui.viewmodel.KeyboardViewModel
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @Composable
 fun EmojiKeyboard(
@@ -48,26 +49,40 @@ fun EmojiKeyboard(
     val recentEmojis by viewModel.recentEmojis.collectAsState(initial = emptyList())
     val coroutineScope = rememberCoroutineScope()
 
+    // Robust category generation with try-catch
     val emojiCategories = remember(recentEmojis) {
-        // Dynamic map merging Recent with static data
-        mapOf("Recent" to recentEmojis) + EmojiData.categories.filterKeys { it != "Recent" }
+        try {
+            // Dynamic map merging Recent with static data
+            mapOf("Recent" to recentEmojis) + EmojiData.categories.filterKeys { it != "Recent" }
+        } catch (e: Exception) {
+            Timber.e(e, "Error loading emoji categories")
+            EmojiData.categories
+        }
     }
 
-    var selectedCategoryIndex by remember { mutableStateOf(1) } // Default to smilies (index 1 after Recent)
+    // Default to 'Smilies' (index 1) if 'Recent' is present, else 0
+    var selectedCategoryIndex by remember { mutableStateOf(if (emojiCategories.containsKey("Recent")) 1 else 0) }
     val categories = emojiCategories.keys.toList()
+
+    // Safety check for index out of bounds
+    if (selectedCategoryIndex >= categories.size) {
+        selectedCategoryIndex = 0
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         // Category tabs
-        ScrollableTabRow(
-            selectedTabIndex = selectedCategoryIndex,
-            edgePadding = 0.dp
-        ) {
-            categories.forEachIndexed { index, category ->
-                Tab(
-                    selected = selectedCategoryIndex == index,
-                    onClick = { selectedCategoryIndex = index },
-                    text = { Text(text = category) }
-                )
+        if (categories.isNotEmpty()) {
+            ScrollableTabRow(
+                selectedTabIndex = selectedCategoryIndex,
+                edgePadding = 0.dp
+            ) {
+                categories.forEachIndexed { index, category ->
+                    Tab(
+                        selected = selectedCategoryIndex == index,
+                        onClick = { selectedCategoryIndex = index },
+                        text = { Text(text = category) }
+                    )
+                }
             }
         }
 
@@ -77,17 +92,21 @@ fun EmojiKeyboard(
             contentPadding = PaddingValues(8.dp),
             modifier = Modifier.weight(1f)
         ) {
-            val selectedCategory = categories[selectedCategoryIndex]
-            val emojis = emojiCategories[selectedCategory] ?: emptyList()
+            val selectedCategory = categories.getOrNull(selectedCategoryIndex)
+            val emojis = selectedCategory?.let { emojiCategories[it] } ?: emptyList()
 
             items(emojis) { emoji ->
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .clickable {
-                            onEmojiSelected(emoji)
-                            coroutineScope.launch {
-                                viewModel.trackEmojiUsage(emoji)
+                            try {
+                                onEmojiSelected(emoji)
+                                coroutineScope.launch {
+                                    viewModel.trackEmojiUsage(emoji)
+                                }
+                            } catch (e: Exception) {
+                                Timber.e(e, "Error selecting emoji: $emoji")
                             }
                         }
                         .padding(4.dp),
