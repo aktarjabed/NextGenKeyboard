@@ -9,9 +9,7 @@ data class Layouts(
     companion object {
         fun getDefault(): Layouts = Layouts(
             layouts = listOf(
-                LanguageLayout.getEnglishLayout(),
-                LanguageLayout.getHindiLayout(),
-                LanguageLayout.getBengaliLayout()
+                LanguageKeyboardDatabase.getLayout("en").toLanguageLayout()
             )
         )
     }

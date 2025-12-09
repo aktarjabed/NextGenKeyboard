@@ -4,23 +4,27 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.aktarjabed.nextgenkeyboard.ui.theme.KeyboardThemes
 import com.aktarjabed.nextgenkeyboard.ui.viewmodel.SettingsViewModel
 import timber.log.Timber
 
 /**
  * Settings Screen Composable
- * Displays clipboard history, multi-language options, and preferences
+ * Displays clipboard history, multi-language options, theme selector, and preferences
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,6 +110,11 @@ fun SettingsScreen(
                             modifier = Modifier.padding(12.dp)
                         )
                     }
+                }
+
+                // ================== THEME SETTINGS ==================
+                SettingsSection(title = "Appearance") {
+                    ThemeSettingsCard(viewModel = viewModel)
                 }
 
                 // ================== LANGUAGE SETTINGS ==================
@@ -233,20 +242,128 @@ private fun SettingsSection(
 }
 
 /**
+ * Theme Settings Card
+ */
+@Composable
+private fun ThemeSettingsCard(viewModel: SettingsViewModel) {
+    var selectedTheme by remember { mutableStateOf(viewModel.getThemePreference()) }
+    val themes = KeyboardThemes.ALL_THEMES
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Select Theme",
+            style = MaterialTheme.typography.labelSmall
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            themes.take(4).forEach { theme ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .clickable {
+                            selectedTheme = theme.id
+                            viewModel.setThemePreference(theme.id)
+                        }
+                        .padding(4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(theme.keyBackgroundColor)
+                            .then(
+                                if (selectedTheme == theme.id) {
+                                    Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                                } else {
+                                    Modifier
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selectedTheme == theme.id) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Selected",
+                                tint = theme.keyTextColor
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = theme.name,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+
+        // Overflow row if more than 4 themes (simple implementation)
+         if (themes.size > 4) {
+             Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.Start
+            ) {
+                themes.drop(4).forEach { theme ->
+                     Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clickable {
+                                selectedTheme = theme.id
+                                viewModel.setThemePreference(theme.id)
+                            }
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(theme.keyBackgroundColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                             if (selectedTheme == theme.id) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Selected",
+                                    tint = theme.keyTextColor
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = theme.name,
+                            style = MaterialTheme.typography.labelSmall,
+                             maxLines = 1
+                        )
+                    }
+                }
+             }
+         }
+    }
+}
+
+/**
  * Language Settings Card
  */
 @Composable
 private fun LanguageSettingsCard(viewModel: SettingsViewModel) {
     val languages = listOf(
-        "English (US)" to "en_US",
-        "Español" to "es_ES",
-        "Français" to "fr_FR",
-        "Deutsch" to "de_DE",
-        "العربية" to "ar_SA",
-        "हिन्दी" to "hi_IN",
-        "中文" to "zh_CN",
-        "日本語" to "ja_JP",
-        "Русский" to "ru_RU"
+        "English (US)" to "en", // Updated codes to match LanguageKeyboardDatabase keys
+        "Español" to "es",
+        "Français" to "fr",
+        "Deutsch" to "de",
+        "Italiano" to "it",
+        "العربية" to "ar",
+        "हिन्दी" to "hi",
+        "বাংলা" to "bn",
+        "Русский" to "ru"
     )
 
     var selectedLanguage by remember { mutableStateOf(viewModel.getKeyboardLanguage()) }
@@ -264,7 +381,7 @@ private fun LanguageSettingsCard(viewModel: SettingsViewModel) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = selectedLanguage.ifEmpty { "Select Language" },
+                    text = languages.find { it.second == selectedLanguage }?.first ?: selectedLanguage,
                     modifier = Modifier.weight(1f)
                 )
             }

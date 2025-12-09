@@ -114,8 +114,8 @@ dependencies {
 
     // Network & Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3!!")
-    implementation("io.coil-kt:coil-compose:3.0.4")
-    implementation("io.coil-kt:coil-gif:3.0.4")
+    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("io.coil-kt:coil-gif:2.6.0")
 
     // Giphy
     implementation("com.giphy.sdk:ui:2.3.15")
@@ -136,6 +136,9 @@ dependencies {
 
     // Testing
     testImplementation("junit:junit:4.13.2")
+    testImplementation("com.google.truth:truth:1.1.5")
+    testImplementation("io.mockk:mockk:1.13.8")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("com.google.dagger:hilt-android-testing:2.52")
     kspTest("com.google.dagger:hilt-android-compiler:2.52")

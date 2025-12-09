@@ -11,25 +11,24 @@ A modern, feature-rich Android keyboard application built with the latest Androi
 
 ## ✨ Features
 
-### 🚀 Current Features
+### 🚀 Production Ready Features
 
 - **🎤 Voice Typing**: Seamless voice-to-text conversion with real-time speech recognition
 - **🖼️ GIF Keyboard**: Integrated Giphy support for searching and inserting GIFs
-- **📋 Clipboard Manager**: Advanced clipboard history with encryption support
+- **📋 Clipboard Manager**: Advanced clipboard history with pinned clips, search, and encryption support
 - **🔤 Advanced Autocorrect**: Intelligent autocorrect engine with dictionary-based suggestions
-- **🌍 Multi-Language Support**: Support for multiple languages and keyboard layouts
-- **🎨 Customizable Themes**: Multiple keyboard themes with dark mode support
+- **🌍 Multi-Language Support**: Support for 35+ languages including Latin, Cyrillic, Arabic, Hebrew, Greek, and Indic scripts.
+- **🎨 Dynamic Themes**: Switch instantly between Light, Dark, Neon, Glass, Material You, and Gaming themes.
+- **😀 Emoji Keyboard**: Full emoji support with categorized browsing and "Recent" history.
+- **👆 Swipe Typing**: Efficient swipe-to-type functionality with O(1) performance optimization.
 - **🔐 Privacy & Security**: Local data processing with optional encryption for sensitive data
-- **📊 Analytics**: Integrated Firebase Crashlytics for stability monitoring
-- **🧠 AI-Powered Predictions**: Gemini AI integration for context-aware suggestions (Phase 2)
+- **🧠 AI-Powered Predictions**: Gemini AI integration for context-aware suggestions.
 
-### 🔮 Coming Soon
+### 🔮 Future Roadmap
 
-- **👆 Swipe Typing**: Gesture-based typing for faster input
-- **😀 Emoji Picker**: Full emoji keyboard with categories and search
-- **🤖 Enhanced AI Predictions**: Advanced ML-based next-word predictions using TensorFlow Lite
-- **📝 Learning System**: Personalized word suggestions based on typing habits
-- **☁️ Cloud Sync**: Optional backup and sync across devices
+- **🤖 Enhanced AI**: Advanced ML-based next-word predictions using on-device models.
+- **☁️ Cloud Sync**: Optional secure backup and sync across devices.
+- **🎨 Custom Theme Builder**: Create your own themes with custom colors and backgrounds.
 
 ---
 
@@ -38,7 +37,7 @@ A modern, feature-rich Android keyboard application built with the latest Androi
 - **Minimum SDK**: Android 11 (API 30)
 - **Target SDK**: Android 14 (API 36)
 - **Compile SDK**: 36
-- **Kotlin**: 1.9+
+- **Kotlin**: 2.0+
 - **Gradle**: 8.0+
 - **JDK**: 17
 
@@ -59,7 +58,7 @@ A modern, feature-rich Android keyboard application built with the latest Androi
 
 #### Prerequisites
 
-- Android Studio Hedgehog (2023.1.1) or later
+- Android Studio Koala or later
 - Git installed on your system
 - Android SDK installed
 
@@ -118,7 +117,7 @@ app/
 │   ├── backup/        # Settings backup
 │   ├── gif/           # Giphy integration
 │   ├── keyboard/      # Keyboard utilities
-│   ├── swipe/         # Swipe typing (in progress)
+│   ├── swipe/         # Swipe typing (O(1) Spatial Grid)
 │   └── voice/         # Voice input manager
 ├── service/           # Keyboard IME service
 ├── ui/                # UI components and screens
@@ -159,135 +158,6 @@ app/
 ./gradlew jacocoTestReport
 ```
 
-### Test Structure
-
-- **Unit Tests**: Located in `app/src/test/`
-  - Repository tests
-  - Autocorrect engine tests
-  - Swipe predictor tests
-  - Security tests
-
-- **Instrumentation Tests**: Located in `app/src/androidTest/`
-  - UI tests
-  - Database tests
-  - End-to-end tests
-
----
-
-## 🚀 Building for Production
-
-```bash
-# Build release APK
-./gradlew assembleRelease
-
-# Build release AAB (for Play Store)
-./gradlew bundleRelease
-```
-
-The output files will be in:
-- APK: `app/build/outputs/apk/release/`
-- AAB: `app/build/outputs/bundle/release/`
-
-### ProGuard
-
-The app uses ProGuard for code obfuscation and optimization. Rules are defined in:
-- [`proguard-rules.pro`](app/proguard-rules.pro)
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please follow these guidelines:
-
-1. **Fork** the repository
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Commit your changes**: `git commit -m 'feat: add amazing feature'`
-4. **Push to the branch**: `git push origin feature/amazing-feature`
-5. **Open a Pull Request**
-
-### Commit Convention
-
-We follow [Conventional Commits](https://www.conventionalcommits.org/):
-
-- `feat:` New feature
-- `fix:` Bug fix
-- `docs:` Documentation changes
-- `style:` Code style changes (formatting, etc.)
-- `refactor:` Code refactoring
-- `test:` Adding or updating tests
-- `chore:` Maintenance tasks
-
-### Code Style
-
-- Follow [Kotlin Coding Conventions](https://kotlinlang.org/docs/coding-conventions.html)
-- Use **ktlint** for formatting
-- Write meaningful commit messages
-- Add unit tests for new features
-- Update documentation as needed
-
----
-
-## 📚 Documentation
-
-- **[Privacy Policy](PRIVACY_POLICY.md)**: Detailed privacy and data handling policy
-- **[Phase 1 Execution Summary](PHASE1-EXECUTION-SUMMARY.md)**: Initial development phase results
-- **[Phase 2 AI Roadmap](PHASE_2_AI_ROADMAP.md)**: Upcoming AI features and improvements
-- **[Feature Gap Analysis](FEATURE_GAP_ANALYSIS.md)**: Current feature status and roadmap
-- **[Integration Guide](INTEGRATION-GUIDE.md)**: Guide for integrating new features
-- **[Quick Reference](QUICK-REFERENCE.md)**: Quick reference for developers
-
----
-
-## 🗺️ Roadmap
-
-### Phase 1: Foundation ✅ (Completed)
-- [x] Core keyboard functionality
-- [x] Advanced autocorrect engine
-- [x] Voice typing
-- [x] GIF keyboard
-- [x] Clipboard manager backend
-- [x] Multi-language support
-- [x] Theme system
-
-### Phase 2: Intelligence 🚧 (In Progress)
-- [ ] On-device AI predictions (TensorFlow Lite)
-- [ ] Swipe typing with gesture recognition
-- [ ] Learning system for personalized suggestions
-- [ ] Enhanced clipboard UI
-- [ ] Emoji picker with search
-- [ ] Smart compose suggestions
-
-### Phase 3: Advanced Features 📋 (Planned)
-- [ ] Cloud backup and sync
-- [ ] Custom user dictionaries
-- [ ] Advanced theming with custom colors
-- [ ] Floating keyboard mode
-- [ ] One-handed mode
-- [ ] Accessibility improvements
-- [ ] Multi-device clipboard sync
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-```
-MIT License
-
-Copyright (c) 2025 aktarjabed
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-```
-
 ---
 
 ## 🔒 Privacy & Security
@@ -302,15 +172,6 @@ For full details, see our [Privacy Policy](PRIVACY_POLICY.md).
 
 ---
 
-## 🐛 Bug Reports & Feature Requests
-
-Found a bug or have a feature request? Please [open an issue](https://github.com/aktarjabed/NextGenKeyboard/issues) with:
-
-- **Bug Reports**: Description, steps to reproduce, expected vs actual behavior, device info
-- **Feature Requests**: Clear description, use case, and potential benefits
-
----
-
 ## 💬 Support & Contact
 
 - **Issues**: [GitHub Issues](https://github.com/aktarjabed/NextGenKeyboard/issues)
@@ -319,26 +180,8 @@ Found a bug or have a feature request? Please [open an issue](https://github.com
 
 ---
 
-## 🙏 Acknowledgments
-
-- [Jetpack Compose](https://developer.android.com/jetpack/compose) - Modern UI toolkit
-- [Giphy](https://giphy.com/) - GIF platform and API
-- [Google AI](https://ai.google/) - Gemini AI API
-- [Firebase](https://firebase.google.com/) - Analytics and crashlytics
-- [Material Design](https://material.io/) - Design system and components
-
----
-
-## ⭐ Star History
-
-If you find this project useful, please consider giving it a star! ⭐
-
----
-
 <div align="center">
 
 **Built with ❤️ by [aktarjabed](https://github.com/aktarjabed)**
-
-[Report Bug](https://github.com/aktarjabed/NextGenKeyboard/issues) · [Request Feature](https://github.com/aktarjabed/NextGenKeyboard/issues) · [Documentation](https://github.com/aktarjabed/NextGenKeyboard/wiki)
 
 </div>

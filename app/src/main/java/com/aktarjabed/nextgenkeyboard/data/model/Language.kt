@@ -9,35 +9,36 @@ data class Language(
     val nativeName: String,
     val isSupported: Boolean = true,
     val isRTL: Boolean = false,
-    val layouts: List<LanguageLayout> = emptyList()
+    val layouts: List<LanguageLayout> = emptyList(),
+    val flagIcon: String = "" // Added to support flag icons
 ) {
     val layout: LanguageLayout
-        get() = layouts.find { it.isDefault } ?: layouts.firstOrNull() ?: LanguageLayout.getEnglishLayout()
+        get() = layouts.find { it.isDefault } ?: layouts.firstOrNull() ?: LanguageKeyboardDatabase.getLayout("en").toLanguageLayout()
 
     companion object {
-        val SUPPORTED_LANGUAGES = listOf(
-            Language(
-                code = "en",
-                name = "English",
-                nativeName = "English",
-                layouts = listOf(LanguageLayout.getEnglishLayout())
-            ),
-            Language(
-                code = "hi",
-                name = "Hindi",
-                nativeName = "हिंदी",
-                layouts = listOf(LanguageLayout.getHindiLayout())
-            ),
-            Language(
-                code = "bn",
-                name = "Bengali",
-                nativeName = "বাংলা",
-                layouts = listOf(LanguageLayout.getBengaliLayout())
-            ),
-            // Added back commonly expected languages as placeholders to avoid regression
-             Language("es", "Spanish", "Español"),
-             Language("fr", "French", "Français"),
-             Language("de", "German", "Deutsch")
-        )
+        // Use LanguageKeyboardDatabase to get all layouts dynamically
+        val SUPPORTED_LANGUAGES: List<Language> by lazy {
+            val database = LanguageKeyboardDatabase
+            val codes = listOf(
+                "en", "es", "fr", "de", "it", "pt", "nl", "pl", "tr", "vi", "id", "ms", "tl", "cs", "hu", "ro", "sv", "da", "no", "fi",
+                "ru", "uk", "bg",
+                "el",
+                "he",
+                "ar", "fa", "ur",
+                "hi", "bn", "ta", "te", "kn", "ml", "gu", "mr", "pa",
+                "th"
+            )
+
+            codes.map { code ->
+                val layoutData = database.getLayout(code)
+                Language(
+                    code = layoutData.languageCode,
+                    name = layoutData.languageName,
+                    nativeName = layoutData.nativeName,
+                    isRTL = layoutData.scriptType == ScriptType.ARABIC || layoutData.scriptType == ScriptType.HEBREW,
+                    layouts = listOf(layoutData.toLanguageLayout())
+                )
+            }
+        }
     }
 }
