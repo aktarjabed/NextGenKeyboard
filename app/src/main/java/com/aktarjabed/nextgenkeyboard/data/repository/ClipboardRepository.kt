@@ -364,13 +364,7 @@ class ClipboardRepository @Inject constructor(
                 }
 
                 // Sensitive keywords
-                text.contains("password", ignoreCase = true) ||
-                text.contains("token", ignoreCase = true) ||
-                text.contains("secret", ignoreCase = true) ||
-                text.contains("pin", ignoreCase = true) ||
-                text.contains("ssn", ignoreCase = true) ||
-                text.contains("api_key", ignoreCase = true) ||
-                text.contains("private_key", ignoreCase = true) -> {
+                Regex("\\b(?:password|token|secret|pin|ssn|api_key|private_key)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text) -> {
                     Timber.d("Detected sensitive keyword")
                     true
                 }
