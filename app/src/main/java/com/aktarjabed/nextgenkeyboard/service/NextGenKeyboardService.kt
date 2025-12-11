@@ -7,6 +7,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -399,7 +400,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
         // Placeholder for VoiceInputView
         androidx.compose.material3.Text(
             "Voice Input (Tap to Close)",
-            modifier = androidx.compose.ui.Modifier.androidx.compose.foundation.clickable { onClose() }
+            modifier = androidx.compose.ui.Modifier.clickable { onClose() }
         )
     }
 

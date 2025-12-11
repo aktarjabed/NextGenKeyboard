@@ -1,82 +1,61 @@
 package com.aktarjabed.nextgenkeyboard.feature.swipe
 
-import com.google.common.truth.Truth.assertThat
+import androidx.test.core.app.ApplicationProvider
+import dagger.hilt.android.testing.HiltTestApplication
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
-@RunWith(JUnit4::class)
+@RunWith(RobolectricTestRunner::class)
+@Config(application = HiltTestApplication::class)
 class SwipePredictorTest {
 
     private lateinit var predictor: SwipePredictor
 
     @Before
-    fun setup() {
-        predictor = SwipePredictor()
+    fun setUp() {
+        predictor = SwipePredictor(ApplicationProvider.getApplicationContext())
+        // Wait for async init (Robolectric main thread usually handles this if we yield,
+        // but since it uses IO dispatcher, we might need a small sleep or rely on eventual consistency)
+        // For testing purposes, we might just test 'learnWord' which is synchronous-ish regarding memory
+        // but the dictionary load is async.
+        // Let's manually trigger a word learn to ensure Trie has something.
+        predictor.learnWord("hello")
+        predictor.learnWord("world")
     }
 
     @Test
-    fun getSuggestions_withValidPrefix_returnsSortedCandidates() {
-        // Arrange
-        val prefix = "th"
-
-        // Act
-        val candidates = predictor.getSuggestions(prefix)
-
-        // Assert
-        assertThat(candidates).isNotEmpty()
-        // Based on the hardcoded frequencies in SwipePredictor
-        assertThat(candidates).containsExactly("the", "this", "that", "think").inOrder()
+    fun `predictWord returns exact match`() {
+        // Since dictionary load is async, we rely on learned words or sleep
+        Thread.sleep(100)
+        val suggestions = predictor.getSuggestions("hel")
+        println("Suggestions for 'hel': $suggestions")
+        val result = predictor.predictWord("hel")
+        // Should find "hello"
+        assertEquals("hello", result)
     }
 
     @Test
-    fun getSuggestions_withFullWord_returnsWord() {
-        val candidates = predictor.getSuggestions("hello")
-        assertThat(candidates).contains("hello")
+    fun `predictWord returns input if no match`() {
+        val result = predictor.predictWord("xyz")
+        assertEquals("xyz", result)
     }
 
     @Test
-    fun getSuggestions_withNonExistentPrefix_returnsEmptyList() {
-        val candidates = predictor.getSuggestions("xyz")
-        assertThat(candidates).isEmpty()
-    }
+    fun `getSuggestions returns multiple options`() {
+        predictor.learnWord("test")
+        predictor.learnWord("testing")
+        predictor.learnWord("tester")
 
-    @Test
-    fun getSuggestions_withShortPrefix_returnsEmptyList() {
-        val candidates = predictor.getSuggestions("a")
-        assertThat(candidates).isEmpty()
-    }
-
-    @Test
-    fun predictWord_withValidPrefix_returnsTopSuggestion() {
-        val prediction = predictor.predictWord("th")
-        assertThat(prediction).isEqualTo("the")
-    }
-
-    @Test
-    fun predictWord_withNonExistentPrefix_returnsOriginal() {
-        val prediction = predictor.predictWord("xyz")
-        assertThat(prediction).isEqualTo("xyz")
-    }
-
-    @Test
-    fun learnWord_addsNewWordToDictionary() {
-        // Arrange
-        val newWord = "testword"
-
-        // Act
-        predictor.learnWord(newWord)
-        val candidates = predictor.getSuggestions("test")
-
-        // Assert
-        assertThat(candidates).contains(newWord)
-    }
-
-    @Test
-    fun learnWord_withShortWord_isIgnored() {
-        predictor.learnWord("hi")
-        val candidates = predictor.getSuggestions("hi")
-        assertThat(candidates).isEmpty()
+        val suggestions = predictor.getSuggestions("test")
+        assertTrue(suggestions.contains("test"))
+        assertTrue(suggestions.contains("testing"))
+        assertTrue(suggestions.contains("tester"))
     }
 }

@@ -139,7 +139,7 @@ private fun GifItem(
         shape = RoundedCornerShape(12.dp)
     ) {
         AsyncImage(
-            model = gif.images.fixedWidth.gifUrl,
+            model = gif.images.fixedWidth?.gifUrl,
             contentDescription = gif.title,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop

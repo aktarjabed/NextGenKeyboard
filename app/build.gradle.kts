@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose") // Replaces kotlinCompilerExtensionVersion
     id("com.google.devtools.ksp")
     id("kotlin-parcelize")
     id("org.jetbrains.kotlin.plugin.serialization")
@@ -61,10 +62,6 @@ android {
         buildConfig = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
-    }
-
     packaging {
         resources {
             excludes += setOf(
@@ -86,9 +83,6 @@ dependencies {
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
     implementation("androidx.activity:activity-compose:1.9.2")
-
-    // InputMethod (required for NextGenKeyboardService)
-    // implementation("androidx.inputmethod:inputmethod:1.0.0-alpha01")
 
     // Compose
     implementation(platform("androidx.compose:compose-bom:2025.10.01"))
@@ -118,7 +112,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
     // Network & Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3!!")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.coil-kt:coil-gif:2.7.0")
 
