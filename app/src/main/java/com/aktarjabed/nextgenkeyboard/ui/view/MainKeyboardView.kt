@@ -75,6 +75,7 @@ fun MainKeyboardView(
 
     // State to track the keyboard's global position offset
     var keyboardRootOffset by remember { mutableStateOf(Offset.Zero) }
+    var lastTapTime by remember { mutableStateOf(0L) }
 
     // Clear stale key positions when the language layout changes
     DisposableEffect(language) {
@@ -199,7 +200,11 @@ fun MainKeyboardView(
                             val globalOffset = localOffset + keyboardRootOffset
                             val key = swipePathProcessor.findKeyAt(globalOffset)
                             if (key != null) {
-                                onKeyClick(key)
+                                val currentTime = System.currentTimeMillis()
+                                if (currentTime - lastTapTime > 50) { // Debounce threshold 50ms
+                                    lastTapTime = currentTime
+                                    onKeyClick(key)
+                                }
                             }
                         }
                     ),

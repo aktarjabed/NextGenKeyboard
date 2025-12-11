@@ -16,6 +16,7 @@ class SwipePathProcessor @Inject constructor(
     private val spatialGrid: SpatialKeyGrid
     private val maxScreenWidth: Float
     private val maxScreenHeight: Float
+    private val lock = Any()
 
     init {
         val metrics = context.resources.displayMetrics
@@ -42,7 +43,9 @@ class SwipePathProcessor @Inject constructor(
             Timber.w("Rect must be valid size")
             return
         }
-        spatialGrid.registerKey(key, rect)
+        synchronized(lock) {
+            spatialGrid.registerKey(key, rect)
+        }
     }
 
     fun processPathToKeySequence(path: List<Offset>): String {
@@ -63,11 +66,13 @@ class SwipePathProcessor @Inject constructor(
         val filteredPath = filterByVelocity(validatedPath)
         if (filteredPath.isEmpty()) return ""
 
-        return filteredPath
-            .asSequence()
-            .mapNotNull { offset -> findIntersectingKey(offset) }
-            .distinctConsecutive()
-            .joinToString("")
+        synchronized(lock) {
+            return filteredPath
+                .asSequence()
+                .mapNotNull { offset -> findIntersectingKey(offset) }
+                .distinctConsecutive()
+                .joinToString("")
+        }
     }
 
     private fun validateAndFilterPath(path: List<Offset>): List<Offset> {
@@ -99,7 +104,9 @@ class SwipePathProcessor @Inject constructor(
 
     // Public method to find key at a specific point (used for taps)
     fun findKeyAt(offset: Offset): String? {
-        return findIntersectingKey(offset)
+        synchronized(lock) {
+            return findIntersectingKey(offset)
+        }
     }
 
     private fun findIntersectingKey(offset: Offset): String? {
@@ -113,5 +120,9 @@ class SwipePathProcessor @Inject constructor(
         }
 
     // Clear positions on keyboard layout change
-    fun clearKeyPositions() = spatialGrid.clear()
+    fun clearKeyPositions() {
+        synchronized(lock) {
+            spatialGrid.clear()
+        }
+    }
 }
