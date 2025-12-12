@@ -9,6 +9,7 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import com.aktarjabed.nextgenkeyboard.data.local.ClipboardDatabase
 import com.aktarjabed.nextgenkeyboard.data.model.Clip
+import com.aktarjabed.nextgenkeyboard.util.SecurityUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -349,45 +350,6 @@ class ClipboardRepository @Inject constructor(
      * - High entropy + length (encrypted/API keys)
      */
     fun isSensitiveContent(text: String): Boolean {
-        return try {
-             when {
-                // OTP: exactly 6 digits only
-                text.matches(Regex("^\\d{6}$")) -> {
-                    Timber.d("Detected OTP pattern")
-                    true
-                }
-
-                // Credit card: 13-19 digits (with possible spaces)
-                text.replace(" ", "").matches(Regex("^\\d{13,19}$")) -> {
-                    Timber.d("Detected credit card pattern")
-                    true
-                }
-
-                // Sensitive keywords
-                text.contains("password", ignoreCase = true) ||
-                text.contains("token", ignoreCase = true) ||
-                text.contains("secret", ignoreCase = true) ||
-                text.contains("pin", ignoreCase = true) ||
-                text.contains("ssn", ignoreCase = true) ||
-                text.contains("api_key", ignoreCase = true) ||
-                text.contains("private_key", ignoreCase = true) -> {
-                    Timber.d("Detected sensitive keyword")
-                    true
-                }
-
-                // High entropy: 20+ chars with mixed digits/special chars (suggests encrypted/token)
-                text.length >= 20 &&
-                text.any { it.isDigit() } &&
-                text.any { !it.isLetterOrDigit() && it != ' ' } -> {
-                    Timber.d("Detected high entropy pattern (possible encrypted data)")
-                    true
-                }
-
-                else -> false
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Error checking sensitive content")
-            false
-        }
+        return SecurityUtils.isSensitiveContent(text)
     }
 }
