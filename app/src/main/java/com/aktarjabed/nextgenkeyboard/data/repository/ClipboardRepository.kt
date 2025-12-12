@@ -350,6 +350,40 @@ class ClipboardRepository @Inject constructor(
      * - High entropy + length (encrypted/API keys)
      */
     fun isSensitiveContent(text: String): Boolean {
+        return try {
+             when {
+                // OTP: exactly 6 digits only
+                text.matches(Regex("^\\d{6}$")) -> {
+                    Timber.d("Detected OTP pattern")
+                    true
+                }
+
+                // Credit card: 13-19 digits (with possible spaces)
+                text.replace(" ", "").matches(Regex("^\\d{13,19}$")) -> {
+                    Timber.d("Detected credit card pattern")
+                    true
+                }
+
+                // Sensitive keywords
+                Regex("\\b(?:password|token|secret|pin|ssn|api_key|private_key)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text) -> {
+                    Timber.d("Detected sensitive keyword")
+                    true
+                }
+
+                // High entropy: 20+ chars with mixed digits/special chars (suggests encrypted/token)
+                text.length >= 20 &&
+                text.any { it.isDigit() } &&
+                text.any { !it.isLetterOrDigit() && it != ' ' } -> {
+                    Timber.d("Detected high entropy pattern (possible encrypted data)")
+                    true
+                }
+
+                else -> false
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error checking sensitive content")
+            false
+        }
         return SecurityUtils.isSensitiveContent(text)
     }
 }
