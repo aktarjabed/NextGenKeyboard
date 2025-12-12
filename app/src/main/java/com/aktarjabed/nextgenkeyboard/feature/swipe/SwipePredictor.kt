@@ -138,10 +138,17 @@ class SwipePredictor @Inject constructor(
     fun learnWord(word: String) {
         if (word.length >= 3) {
             try {
-                // Boost frequency for learned words
-                insertWord(word, frequency = 200)
-                // Ensure predictor is active if we have learned words, even if initial load failed or is pending
-                isDictionaryLoaded = true
+                synchronized(lock) {
+                    // Boost frequency for learned words
+                    // Note: insertWord re-acquires lock, which is fine (reentrant),
+                    // but we can inline logic or just rely on reentrancy.
+                    // However, insertWord is private and implemented with synchronized(lock).
+                    // We can't easily avoid double-lock unless we change structure.
+                    // ReentrantLock (or synchronized block in Java/Kotlin) supports this.
+                    insertWord(word, frequency = 200)
+                    // Ensure predictor is active if we have learned words, even if initial load failed or is pending
+                    isDictionaryLoaded = true
+                }
                 Timber.d("Learned new word: $word")
             } catch (e: Exception) {
                 Timber.e(e, "Error learning word")

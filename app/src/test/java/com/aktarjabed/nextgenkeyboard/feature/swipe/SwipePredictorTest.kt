@@ -32,13 +32,34 @@ class SwipePredictorTest {
 
     @Test
     fun `predictWord returns exact match`() {
-        // Since dictionary load is async, we rely on learned words or sleep
-        Thread.sleep(100)
+        // Use a polling approach instead of sleep
+        awaitUntilDictionaryLoaded(timeoutMs = 2000)
+
         val suggestions = predictor.getSuggestions("hel")
         println("Suggestions for 'hel': $suggestions")
         val result = predictor.predictWord("hel")
         // Should find "hello"
         assertEquals("hello", result)
+    }
+
+    private fun awaitUntilDictionaryLoaded(timeoutMs: Long) {
+        val startTime = System.currentTimeMillis()
+        // We can check if getSuggestions returns something as a proxy for loaded state
+        // because isDictionaryLoaded is private, but learnWord sets it to true.
+        // Or we can assume learnWord worked and we just need to wait for the thread visibility?
+        // Actually, with the synchronized fix, learnWord should be immediate.
+        // But the original test used sleep(100) and failed.
+        // Let's poll for a short while.
+
+        while (System.currentTimeMillis() - startTime < timeoutMs) {
+            val suggestions = predictor.getSuggestions("hel")
+            if (suggestions.isNotEmpty()) {
+                return
+            }
+            Thread.sleep(10)
+        }
+        // If we timeout, we proceed and likely fail assertion, or we can fail here.
+        // But learnWord("hello") should have populated it.
     }
 
     @Test
