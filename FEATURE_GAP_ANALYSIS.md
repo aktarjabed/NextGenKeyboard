@@ -1,31 +1,30 @@
 # 📊 Feature Gap Analysis: "Does it have...?"
 
-Based on the deep code audit, here is the exact status of the requested features:
+Based on the deep code audit (updated for Phase 3), here is the **actual** status of the requested features:
 
 | Feature | Status | Details |
 | :--- | :---: | :--- |
-| **📋 Clipboard Manager** | ⚠️ **PARTIAL** | ✅ **Backend:** Database & Logic implemented (`ClipboardRepository`).<br>❌ **Frontend:** No "Paste" button on the main keyboard. History only viewable in Settings. |
-| **👆 Swipe Typing** | ❌ **MISSING** | **No implementation found.** <br>The current `MainKeyboardView` uses standard click listeners (`onClick`). There is no gesture detection or path-drawing logic. |
-| **⚡ Prediction Speed** | ⚠️ **BASIC** | **Fast but "Dumb".** <br>Current engine uses simple dictionary lookups (Levenshtein distance). It is performant (<10ms) but lacks context (AI) and next-word prediction. |
-| **🎤 Voice Typing** | ✅ **PRESENT** | Implemented via `VoiceInputManager` and accessible via the mic icon on the keyboard. |
-| **🖼️ GIF Keyboard** | ✅ **PRESENT** | Implemented via `GiphyManager` and UI exists (`GifKeyboard.kt`). |
-| **😀 Emoji Support** | ❌ **MISSING** | No Emoji picker found in the UI code. |
+| **📋 Clipboard Manager** | ✅ **PRESENT** | ✅ **Backend:** `ClipboardRepository` with sensitive data filtering.<br>✅ **Frontend:** `ClipboardStrip` implemented in `MainKeyboardView`. |
+| **👆 Swipe Typing** | ✅ **PRESENT** | **Implemented.** <br>`SwipePathProcessor` handles path tracing and `SwipePredictor` matches words. <br>⚠️ **Note:** Requires Multi-Touch bug fix for stability. |
+| **⚡ Prediction Speed** | ✅ **AI READY** | **Smart Prediction Integrated.** <br>Uses `GeminiPredictionClient` for context-aware suggestions, backed by `SmartPredictionUseCase`. |
+| **🎤 Voice Typing** | ✅ **PRESENT** | Implemented via `VoiceInputManager`. |
+| **🖼️ GIF Keyboard** | ✅ **PRESENT** | Implemented via `GiphyManager` and `GifKeyboard`. |
+| **😀 Emoji Support** | ✅ **PRESENT** | **Implemented.** <br>`EmojiKeyboard` exists with category support and recent history tracking. |
 
 ---
 
-## 🛠️ Recommended Actions (Phase 2)
+## 🛠️ Recommended Actions (Phase 3 & Maintenance)
 
-### 1. Enable Swipe Typing (High Effort)
-*   **Required:** Add `pointerInput` modifiers to the keyboard composable.
-*   **Logic:** Trace finger path → Match against key coordinates → Calculate most likely word path.
+### 1. Fix Multi-Touch Architecture (Critical)
+*   **Issue:** `SwipeGestureDetector` blocks multiple pointers.
+*   **Action:** Refactor to use `awaitPointerEventScope` with pointer ID tracking to allow simultaneous key presses (shift-key, rapid typing).
 
-### 2. Add Clipboard Strip (Low Effort)
-*   **Required:** Add a "Paste" icon to the top row of `MainKeyboardView`.
-*   **Logic:** Call `clipboardRepository.pasteFromClipboard()` on click.
+### 2. Optimize AI Prediction
+*   **Issue:** Network calls to Gemini need caching and debouncing.
+*   **Action:** Ensure `SmartPredictionUseCase` handles rate limiting and doesn't spam the API on every character.
 
-### 3. Upgrade to AI Prediction (Medium Effort)
-*   **Current:** Dictionary Match (e.g., "helo" -> "hello").
-*   **Goal:** Next-word prediction (e.g., "How are" -> "you").
-*   **Tech:** TensorFlow Lite (as outlined in Phase 2 Roadmap).
+### 3. Verify Build Stability
+*   **Issue:** `compileSdk 36` is very new.
+*   **Action:** Verify layout compatibility on older API levels (MinSdk 30).
 
-This confirms that while the **infrastructure** is solid, the **modern conveniences** (Swipe, Smart Prediction) are the clear next steps.
+This document now accurately reflects the codebase state: The "Missing" features from Phase 2 have been implemented, and the focus is now on **Robustness** and **AI Optimization**.
