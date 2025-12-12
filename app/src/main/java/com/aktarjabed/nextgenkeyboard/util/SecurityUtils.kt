@@ -58,9 +58,10 @@ object SecurityUtils {
     private fun containsSensitiveKeyword(text: String): Boolean {
         val lowerText = text.lowercase()
         return SENSITIVE_KEYWORDS.any { keyword ->
-            // Simple containment check for now, can be improved to regex word boundary if needed
-            // But for privacy, over-matching is better than under-matching
-            lowerText.contains(keyword)
+            // Use word boundary to avoid false positives (e.g. "pin" in "happiness")
+            // \b ensures we match "pin" but not "spinning"
+            val pattern = "\\b$keyword\\b".toRegex()
+            pattern.containsMatchIn(lowerText)
         }
     }
 }

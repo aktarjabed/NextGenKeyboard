@@ -11,34 +11,36 @@ fun Modifier.detectSwipeGesture(
     onSwipeComplete: (List<Offset>) -> Unit,
     onTap: (Offset) -> Unit
 ): Modifier = pointerInput(Unit) {
-    var path = mutableListOf<Offset>()
-    var isSwipe = false
-
     awaitEachGesture {
-        val down = awaitFirstDown()
-        path.clear()
+        val down = awaitFirstDown(requireUnconsumed = false)
+        val pointerId = down.id
+        var path = mutableListOf<Offset>()
         path.add(down.position)
+        var isSwipe = false
 
+        // Track ONLY this specific pointer
         do {
             val event = awaitPointerEvent()
-            val change = event.changes.first()
+            val change = event.changes.find { it.id == pointerId }
 
-            if (change.positionChange().getDistance() > 20f) {
-                isSwipe = true
+            if (change != null && change.pressed) {
+                if (!isSwipe && (change.position - down.position).getDistance() > 20f) {
+                    isSwipe = true
+                }
+                if (isSwipe) {
+                    path.add(change.position)
+                }
+                change.consume() // Consume events for this pointer
+            } else {
+                break // Pointer lifted
             }
-
-            if (isSwipe) {
-                path.add(change.position)
-            }
-
-        } while (change.pressed)
+        } while (change?.pressed == true)
 
         if (isSwipe) {
-            onSwipeComplete(path.toList())
+            onSwipeComplete(path)
         } else {
+            // Only register tap if it wasn't a swipe and wasn't consumed elsewhere
             onTap(down.position)
         }
-
-        isSwipe = false
     }
 }
