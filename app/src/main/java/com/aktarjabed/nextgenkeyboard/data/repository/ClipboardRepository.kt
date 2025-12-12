@@ -9,6 +9,7 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import com.aktarjabed.nextgenkeyboard.data.local.ClipboardDatabase
 import com.aktarjabed.nextgenkeyboard.data.model.Clip
+import com.aktarjabed.nextgenkeyboard.util.SecurityUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -383,5 +384,6 @@ class ClipboardRepository @Inject constructor(
             Timber.e(e, "Error checking sensitive content")
             false
         }
+        return SecurityUtils.isSensitiveContent(text)
     }
 }

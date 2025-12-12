@@ -548,6 +548,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                     logError("Error processing key press in coroutine", e)
                     // Fallback: try to commit original text
                     try {
+                        Timber.w("Fallback: Committing raw text for '$text'")
                         commitText(text)
                     } catch (commitError: Exception) {
                         Timber.e(commitError, "Failed to commit fallback text")
