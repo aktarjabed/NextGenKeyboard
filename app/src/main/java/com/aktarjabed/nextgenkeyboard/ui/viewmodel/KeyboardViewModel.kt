@@ -6,6 +6,7 @@ import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import com.aktarjabed.nextgenkeyboard.feature.ai.AiContextManager
 import com.aktarjabed.nextgenkeyboard.feature.ai.SmartPredictionUseCase
+import com.aktarjabed.nextgenkeyboard.feature.gif.GiphyManager
 import com.giphy.sdk.core.models.Media
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 sealed class KeyboardUiState {
@@ -32,7 +34,8 @@ class KeyboardViewModel @Inject constructor(
     private val clipboardRepository: ClipboardRepository,
     private val preferencesRepository: PreferencesRepository,
     private val smartPredictionUseCase: SmartPredictionUseCase,
-    private val aiContextManager: AiContextManager
+    private val aiContextManager: AiContextManager,
+    private val giphyManager: GiphyManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<KeyboardUiState>(KeyboardUiState.Loading)
@@ -48,8 +51,71 @@ class KeyboardViewModel @Inject constructor(
     private val _searchedGifs = MutableStateFlow<List<Media>>(emptyList())
     val searchedGifs: StateFlow<List<Media>> = _searchedGifs.asStateFlow()
 
+    private var gifSearchJob: Job? = null
+
+    /**
+     * Search for GIFs with debouncing and error handling
+     */
     fun searchGifs(query: String) {
-        // Stub
+        // Cancel previous search
+        gifSearchJob?.cancel()
+
+        // Clear results if query is empty
+        if (query.isBlank()) {
+            _searchedGifs.value = emptyList()
+            return
+        }
+
+        // Validate query length
+        if (query.length < 2) {
+            Timber.d("GIF search query too short: ${query.length} chars")
+            return
+        }
+
+        gifSearchJob = viewModelScope.launch {
+            try {
+                // Debounce search
+                delay(300)
+
+                if (!giphyManager.isReady()) {
+                    Timber.w("GiphyManager not initialized")
+                    _searchedGifs.value = emptyList()
+                    return@launch
+                }
+
+                // Perform search with callback
+                giphyManager.searchGifs(query.trim()) { results ->
+                    _searchedGifs.value = results
+                    Timber.d("Found ${results.size} GIFs for query: $query")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error searching GIFs")
+                _searchedGifs.value = emptyList()
+            }
+        }
+    }
+
+    /**
+     * Load trending GIFs
+     */
+    fun loadTrendingGifs() {
+        viewModelScope.launch {
+            try {
+                if (!giphyManager.isReady()) {
+                    Timber.w("GiphyManager not initialized")
+                    _trendingGifs.value = emptyList()
+                    return@launch
+                }
+
+                giphyManager.trendingGifs { results ->
+                    _trendingGifs.value = results
+                    Timber.d("Loaded ${results.size} trending GIFs")
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error loading trending GIFs")
+                _trendingGifs.value = emptyList()
+            }
+        }
     }
 
     // Prediction Debounce
@@ -114,7 +180,19 @@ class KeyboardViewModel @Inject constructor(
 
     fun trackEmojiUsage(emoji: String) {
         viewModelScope.launch {
-            preferencesRepository.addRecentEmoji(emoji)
+            try {
+                if (emoji.isNotBlank()) {
+                    preferencesRepository.addRecentEmoji(emoji)
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error tracking emoji usage")
+            }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        gifSearchJob?.cancel()
+        predictionJob?.cancel()
     }
 }

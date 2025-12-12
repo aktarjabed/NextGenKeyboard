@@ -235,15 +235,72 @@ class AdvancedAutocorrectEngine @Inject constructor(
         }
     }
 
+    /**
+     * Process input text with auto-correction
+     * @param text The input text to process
+     * @return Corrected text or original if no correction needed
+     */
     fun processInput(text: String): String {
-        // Placeholder for auto-replacement logic (e.g. "teh" -> "the")
-        // For now, return as is.
-        return text
+        if (text.isBlank()) return text
+
+        return try {
+            // Common typo replacements
+            val corrections = mapOf(
+                "teh" to "the",
+                "adn" to "and",
+                "taht" to "that",
+                "thsi" to "this",
+                "whcih" to "which",
+                "recieve" to "receive",
+                "seperate" to "separate",
+                "definately" to "definitely",
+                "occured" to "occurred",
+                "untill" to "until"
+            )
+
+            corrections[text.lowercase()] ?: text
+        } catch (e: Exception) {
+            Timber.e(e, "Error processing input text")
+            text // Return original on error
+        }
     }
 
+    /**
+     * Clean up resources when engine is no longer needed
+     */
     fun cleanup() {
-        engineScope.cancel()
-        suggestionCache.evictAll()
+        try {
+            Timber.d("Cleaning up AdvancedAutocorrectEngine")
+            engineScope.cancel()
+            suggestionCache.evictAll()
+            dictionaries.clear()
+            learnedWords.clear()
+        } catch (e: Exception) {
+            Timber.e(e, "Error during cleanup")
+        }
+    }
+
+    /**
+     * Check if engine is ready for use
+     */
+    fun isReady(): Boolean {
+        return dictionaries.isNotEmpty()
+    }
+
+    /**
+     * Get statistics about loaded dictionaries
+     */
+    fun getStats(): Map<String, Int> {
+        return try {
+            mapOf(
+                "languages" to dictionaries.size,
+                "learned_words" to learnedWords.size,
+                "cache_size" to suggestionCache.size()
+            )
+        } catch (e: Exception) {
+            Timber.e(e, "Error getting stats")
+            emptyMap()
+        }
     }
 }
 

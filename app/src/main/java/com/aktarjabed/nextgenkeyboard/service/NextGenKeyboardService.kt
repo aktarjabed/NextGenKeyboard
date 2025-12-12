@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.content.ContextCompat
@@ -160,7 +161,8 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
             clipboardRepository = clipboardRepository,
             preferencesRepository = preferencesRepository,
             smartPredictionUseCase = smartPredictionUseCase,
-            aiContextManager = aiContextManager
+            aiContextManager = aiContextManager,
+            giphyManager = giphyManager
         )
 
         // Initialize Giphy
@@ -400,106 +402,218 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
         // Placeholder for VoiceInputView
         androidx.compose.material3.Text(
             "Voice Input (Tap to Close)",
+<<<<<<< HEAD
             modifier = androidx.compose.ui.Modifier.clickable { onClose() }
+=======
+            modifier = Modifier.clickable { onClose() }
+>>>>>>> origin/main
         )
     }
 
     private fun handleUtilityAction(action: UtilityKeyAction) {
-        when (action) {
-            UtilityKeyAction.COPY -> {
-                val selectedText = currentInputConnection.safeGetSelectedText(0)
-                if (!selectedText.isNullOrEmpty()) {
-                    serviceScope.launch { clipboardRepository.copyToClipboard(selectedText.toString(), "Selection") }
-                }
+        try {
+            if (currentInputConnection == null) {
+                Timber.w("No input connection for utility action: $action")
+                return
             }
-            UtilityKeyAction.PASTE_CLIPBOARD -> {
-                serviceScope.launch {
-                    val text = clipboardRepository.pasteFromClipboard()
-                    if (!text.isNullOrEmpty()) {
-                        commitText(text)
+
+            when (action) {
+                UtilityKeyAction.COPY -> {
+                    try {
+                        val selectedText = currentInputConnection.safeGetSelectedText(0)
+                        if (!selectedText.isNullOrEmpty()) {
+                            serviceScope.launch {
+                                clipboardRepository.copyToClipboard(selectedText.toString(), "Selection")
+                            }
+                        } else {
+                            Timber.d("No text selected to copy")
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error copying text")
                     }
                 }
+                UtilityKeyAction.PASTE_CLIPBOARD -> {
+                    serviceScope.launch {
+                        try {
+                            val text = clipboardRepository.pasteFromClipboard()
+                            if (!text.isNullOrEmpty()) {
+                                commitText(text)
+                            } else {
+                                Timber.d("No clipboard content to paste")
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error pasting from clipboard")
+                        }
+                    }
+                }
+                UtilityKeyAction.SELECT_ALL -> {
+                    try {
+                        currentInputConnection.safePerformContextMenuAction(android.R.id.selectAll)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error selecting all text")
+                    }
+                }
+                UtilityKeyAction.CUT -> {
+                    try {
+                        currentInputConnection.safePerformContextMenuAction(android.R.id.cut)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error cutting text")
+                    }
+                }
+                UtilityKeyAction.UNDO_LAST_DELETE -> {
+                    try {
+                        // Fallback to system undo if available
+                        currentInputConnection.safePerformContextMenuAction(android.R.id.undo)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error performing undo")
+                    }
+                }
+                UtilityKeyAction.INSERT_DATE -> {
+                    try {
+                        val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                        commitText(date)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error inserting date")
+                    }
+                }
+                else -> {
+                    Timber.w("Unhandled utility action: $action")
+                }
             }
-            UtilityKeyAction.SELECT_ALL -> {
-                currentInputConnection.safePerformContextMenuAction(android.R.id.selectAll)
-            }
-            UtilityKeyAction.CUT -> {
-                currentInputConnection.safePerformContextMenuAction(android.R.id.cut)
-            }
-            UtilityKeyAction.UNDO_LAST_DELETE -> {
-                // Not standard Android API, often requires tracking history.
-                // Fallback to system undo if available.
-                currentInputConnection.safePerformContextMenuAction(android.R.id.undo)
-            }
-            UtilityKeyAction.INSERT_DATE -> {
-                val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-                commitText(date)
-            }
-            // Add other cases as needed
-            else -> {}
+        } catch (e: Exception) {
+            Timber.e(e, "Critical error handling utility action: $action")
         }
     }
 
     private fun handleKeyPress(text: String) {
-        if (text.isBlank()) return
-
-        when (text) {
-            "⌫" -> {
-                handleBackspace()
-                return
-            }
-            "↵" -> {
-                handleEnter()
-                return
-            }
-            "SPACE" -> {
-                commitText(" ")
-                return
-            }
+        if (text.isBlank()) {
+            Timber.w("Attempted to handle blank key press")
+            return
         }
 
-        serviceScope.launch {
-            try {
-                // Process through autocorrect if enabled
-                // Note: autocorrectEngine.processInput is not fully implemented yet, but safe to call
-                val processedText = if (!isPasswordMode) {
-                    autocorrectEngine.processInput(text)
-                } else {
-                    text
+        try {
+            when (text) {
+                "⌫" -> {
+                    handleBackspace()
+                    return
                 }
-
-                commitText(processedText)
-
-                if (!isPasswordMode) {
-                    autocorrectEngine.learnWord(processedText)
+                "↵" -> {
+                    handleEnter()
+                    return
                 }
-
-                // Trigger prediction update after key press
-                // Note: Ideally, we should observe text changes, but extracting text
-                // from InputConnection every time can be slow.
-                // We'll update context lazily or on specific events.
-                val textBeforeCursor = currentInputConnection?.getTextBeforeCursor(100, 0)?.toString() ?: ""
-                viewModel.onTextChanged(textBeforeCursor)
-
-            } catch (e: Exception) {
-                logError("Error processing key press", e)
-                commitText(text)
+                "SPACE" -> {
+                    commitText(" ")
+                    return
+                }
             }
+
+            serviceScope.launch {
+                try {
+                    // Validate input connection
+                    if (currentInputConnection == null) {
+                        Timber.w("No input connection available")
+                        return@launch
+                    }
+
+                    // Process through autocorrect if enabled and ready
+                    val processedText = if (!isPasswordMode && autocorrectEngine.isReady()) {
+                        try {
+                            autocorrectEngine.processInput(text)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error in autocorrect processing")
+                            text // Fallback to original
+                        }
+                    } else {
+                        text
+                    }
+
+                    commitText(processedText)
+
+                    // Learn word if not in password mode
+                    if (!isPasswordMode && processedText.isNotBlank()) {
+                        try {
+                            autocorrectEngine.learnWord(processedText)
+                        } catch (e: Exception) {
+                            Timber.e(e, "Error learning word")
+                        }
+                    }
+
+                    // Trigger prediction update after key press
+                    try {
+                        val textBeforeCursor = currentInputConnection?.getTextBeforeCursor(100, 0)?.toString()
+                        if (!textBeforeCursor.isNullOrBlank()) {
+                            viewModel.onTextChanged(textBeforeCursor)
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error updating predictions")
+                    }
+
+                } catch (e: Exception) {
+                    logError("Error processing key press in coroutine", e)
+                    // Fallback: try to commit original text
+                    try {
+                        Timber.w("Fallback: Committing raw text for '$text'")
+                        commitText(text)
+                    } catch (commitError: Exception) {
+                        Timber.e(commitError, "Failed to commit fallback text")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            logError("Critical error in handleKeyPress", e)
         }
     }
 
     private fun handleBackspace() {
-        currentInputConnection.safeDeleteSurroundingText(1, 0)
+        try {
+            if (currentInputConnection == null) {
+                Timber.w("No input connection for backspace")
+                return
+            }
+            currentInputConnection.safeDeleteSurroundingText(1, 0)
+        } catch (e: Exception) {
+            Timber.e(e, "Error handling backspace")
+        }
     }
 
     private fun handleEnter() {
-        currentInputConnection.safeSendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER))
-        currentInputConnection.safeSendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER))
+        try {
+            if (currentInputConnection == null) {
+                Timber.w("No input connection for enter")
+                return
+            }
+            currentInputConnection.safeSendKeyEvent(
+                android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER)
+            )
+            currentInputConnection.safeSendKeyEvent(
+                android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER)
+            )
+        } catch (e: Exception) {
+            Timber.e(e, "Error handling enter key")
+        }
     }
 
     private fun commitText(text: String) {
-        currentInputConnection.safeCommitText(text, 1)
-        viewModel.onTextCommitted(text)
+        try {
+            if (text.isBlank()) {
+                Timber.w("Attempted to commit blank text")
+                return
+            }
+
+            if (currentInputConnection == null) {
+                Timber.w("No input connection for commit")
+                return
+            }
+
+            val success = currentInputConnection.safeCommitText(text, 1)
+            if (success) {
+                viewModel.onTextCommitted(text)
+            } else {
+                Timber.w("Failed to commit text: $text")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error committing text")
+        }
     }
 
     private fun openSettings() {
