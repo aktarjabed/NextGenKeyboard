@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -44,6 +45,7 @@ fun Key(
             .padding(horizontal = 12.dp, vertical = 16.dp)
             .semantics {
                 role = Role.Button
+                contentDescription = char
                 onClick(label = char) {
                     onClick()
                     true

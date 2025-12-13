@@ -1,6 +1,7 @@
 package com.aktarjabed.nextgenkeyboard
 
 import android.app.Application
+import android.widget.Toast
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
@@ -29,12 +30,38 @@ class NextGenKeyboardApp : Application(), Configuration.Provider {
         // Initialize Firebase
         initializeFirebase()
 
+        // API Key Validation
+        validateApiKeys()
+
         Timber.d("NextGenKeyboardApp initialized")
     }
 
     private fun initializeLogging() {
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
+        }
+    }
+
+    private fun validateApiKeys() {
+        val missingKeys = mutableListOf<String>()
+        if (BuildConfig.GIPHY_API_KEY.isBlank()) {
+            missingKeys.add("GIPHY_API_KEY")
+            Timber.w("⚠️ Giphy API Key is missing. GIF features will be disabled.")
+        }
+        if (BuildConfig.GEMINI_API_KEY.isBlank()) {
+            missingKeys.add("GEMINI_API_KEY")
+            Timber.w("⚠️ Gemini API Key is missing. Smart predictions will be disabled.")
+        }
+
+        if (missingKeys.isNotEmpty() && BuildConfig.DEBUG) {
+            // Show toast only in DEBUG builds to warn developers
+            CoroutineScope(Dispatchers.Main).launch {
+                 Toast.makeText(
+                     this@NextGenKeyboardApp,
+                     "Missing API Keys: ${missingKeys.joinToString(", ")}",
+                     Toast.LENGTH_LONG
+                 ).show()
+            }
         }
     }
 
