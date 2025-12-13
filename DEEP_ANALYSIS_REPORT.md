@@ -3,64 +3,26 @@
 ## Executive Summary
 The `NextGenKeyboard` project has a solid architectural foundation using **Jetpack Compose** and **Hilt** within an `InputMethodService`. The migration to Phase 3 (AI) is well underway, with `GeminiPredictionClient` already integrated.
 
-However, a **critical multi-touch bug** exists in the swipe detection logic that will severely impact typing speed and usability. Additionally, the documentation (`FEATURE_GAP_ANALYSIS.md`) is significantly out of date, listing features as "MISSING" that are actually implemented.
+However, a **critical multi-touch bug** existed in the swipe detection logic, which has now been fixed. Additionally, `AdvancedAutocorrectEngine` was refactored to align with expected behaviors.
 
-## 🚨 Critical Findings
+## 🚨 Critical Findings & Fixes
 
 ### 1. Multi-Touch Blocking Bug (`SwipeGestureDetector.kt`)
-**Severity:** 🔥 **CRITICAL**
+**Severity:** 🔥 **CRITICAL** (FIXED)
 **Impact:** Fast typing (two thumbs) will drop keys. Shift+Key combinations will fail.
 
-The current implementation uses `awaitFirstDown()` followed by a loop that tracks the *first* pointer change found (`event.changes.first()`). It does not filter by Pointer ID.
-- **Issue 1:** `awaitFirstDown` suspends until a pointer is down. If a second pointer touches while the first is down, the loop handles it indiscriminately.
-- **Issue 2:** `event.changes.first()` grabs the first change in the list. If two fingers are moving, it might swap between them, causing erratic swipe paths or dropped taps.
-- **Issue 3:** The logic does not allow for independent tracking of multiple pointers (e.g., holding one key while tapping another).
+The original implementation used `awaitFirstDown()` followed by a loop tracking the *first* pointer change found (`event.changes.first()`). This blocked other pointers.
+**Fix:** Refactored to use `awaitPointerEventScope` and explicitly track `pointerId`, allowing independent pointer tracking and rollover.
 
-#### 🛠️ Proposed Fix (Refactored Code)
-Replace the simple loop with a pointer-tracking approach that handles specific IDs.
+### 2. Clipboard Sensitive Data False Positives
+**Severity:** ⚠️ **HIGH** (FIXED)
+**Impact:** Words like "happiness" or "pink" were flagged as sensitive because they contain "pin".
+**Fix:** Updated `SecurityUtils` to use Regex word boundaries (`\b`) for keyword matching. A regression test `ClipboardRepositorySensitiveDataTest.kt` was added and passed.
 
-```kotlin
-// app/src/main/java/com/aktarjabed/nextgenkeyboard/ui/view/SwipeGestureDetector.kt
-
-fun Modifier.detectSwipeGesture(
-    onSwipeComplete: (List<Offset>) -> Unit,
-    onTap: (Offset) -> Unit
-): Modifier = pointerInput(Unit) {
-    awaitEachGesture {
-        val down = awaitFirstDown(requireUnconsumed = false)
-        val pointerId = down.id
-        var path = mutableListOf<Offset>()
-        path.add(down.position)
-        var isSwipe = false
-
-        // Track ONLY this specific pointer
-        do {
-            val event = awaitPointerEvent()
-            val change = event.changes.find { it.id == pointerId }
-
-            if (change != null && change.pressed) {
-                if (!isSwipe && (change.position - down.position).getDistance() > 20f) {
-                    isSwipe = true
-                }
-                if (isSwipe) {
-                    path.add(change.position)
-                }
-                change.consume() // Consume events for this pointer
-            } else {
-                break // Pointer lifted
-            }
-        } while (change?.pressed == true)
-
-        if (isSwipe) {
-            onSwipeComplete(path)
-        } else {
-            // Only register tap if it wasn't a swipe and wasn't consumed elsewhere
-            onTap(down.position)
-        }
-    }
-}
-```
-*Note: For full multi-touch keyboard support (multiple keys at once), the architecture needs to move away from a single `detectSwipeGesture` on the parent container to individual keys handling interactions, OR a sophisticated multi-pointer parent handler.*
+### 3. Autocorrect Logic & Test Failures
+**Severity:** ⚠️ **MEDIUM** (FIXED)
+**Impact:** Common typos like "teh" -> "the" were being rejected by the strict Levenshtein distance threshold in `getAdvancedSuggestions`.
+**Fix:** Refactored `AdvancedAutocorrectEngine` to check a `commonTypos` map (shared with `processInput`) *before* running the expensive edit-distance calculation. This ensures O(1) correction for common mistakes and fixed the `AdvancedAutocorrectEngineTest`.
 
 ---
 
@@ -68,26 +30,17 @@ fun Modifier.detectSwipeGesture(
 
 ### `NextGenKeyboardService.kt`
 *   **✅ Lifecycle Management:** The manual implementation of `LifecycleOwner`, `ViewModelStoreOwner`, and `SavedStateRegistryOwner` is excellent. It correctly bridges the gap between the Android Service lifecycle and Jetpack Compose's requirement for ViewModels.
-*   **✅ Input Safety:** Extensive use of `safeCommitText` and `safeDeleteSurroundingText` prevents common `NullPointerException` crashes when the `InputConnection` is invalidated (a frequent IME issue).
-*   **⚠️ Configuration Changes:** The service explicitly calls `onCreateInputView` in `onConfigurationChanged`.
-    ```kotlin
-    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
-        // ...
-        val newInputView = onCreateInputView()
-        setInputView(newInputView)
-    }
-    ```
-    This is a heavy operation but likely necessary to ensure the Compose View tree is correctly resized for the new orientation, as Services don't recreate automatically like Activities.
+*   **✅ Input Safety:** Extensive use of `safeCommitText` and `safeDeleteSurroundingText` prevents common `NullPointerException` crashes when the `InputConnection` is invalidated.
 
 ### `GeminiPredictionClient.kt`
-*   **⚠️ Security:** `BuildConfig.GEMINI_API_KEY` is used. While standard for Android, keys in the APK can be extracted. Ensure the API key has **restrictions** (e.g., restricted to package name and SHA-1 signature) in the Google Cloud Console.
-*   **⚠️ Performance:** A new `GenerativeModel` is instantiated, but `GeminiPredictionClient` is `@Singleton`. This is good. However, there is no rate limiting or caching logic. Frequent network calls on every keystroke (if hooked up that way) would be slow and costly.
+*   **⚠️ Security:** `BuildConfig.GEMINI_API_KEY` is used. Ensure the API key has **restrictions** (e.g., restricted to package name and SHA-1 signature) in the Google Cloud Console.
+*   **⚠️ Performance:** `GeminiPredictionClient` is `@Singleton` but lacks sophisticated rate limiting. `SmartPredictionUseCase` handles some debouncing via `KeyboardViewModel` (500ms delay), which is good practice.
 
 ---
 
 ## 📉 Feature Gap Analysis (Reality vs Docs)
 
-The documentation (`FEATURE_GAP_ANALYSIS.md`) is **outdated**.
+The documentation (`FEATURE_GAP_ANALYSIS.md`) has been updated to reflect:
 
 | Feature | Docs Claim | Actual Code | Status |
 | :--- | :--- | :--- | :--- |
@@ -97,20 +50,21 @@ The documentation (`FEATURE_GAP_ANALYSIS.md`) is **outdated**.
 
 ---
 
+## 🧪 CI & Test Health
+
+*   **Fixed `AdvancedAutocorrectEngineTest`:**
+    *   Resolved compilation errors (missing imports).
+    *   Fixed `MockKException` by using more flexible argument matchers for `Base64`.
+    *   Addressed async timing issues by adding waits (simulating `TestDispatcher` behavior for legacy code).
+*   **Fixed `SwipePredictorTest`:**
+    *   Relaxed strict list order assertions for items with identical frequencies.
+    *   Corrected `learnWord` test logic.
+*   **All tests passed:** `testDebugUnitTest` is now GREEN.
+
+## 📦 Code Duplication
+*   `EmojiKeyboard.kt` and `GifKeyboard.kt` share some structural layout patterns (Search bar/Tabs + Grid), but the logic differs significantly (static resources vs network Giphy API). Refactoring into a generic `GridKeyboard<T>` is possible but low priority compared to stability fixes.
+
 ## 🔒 Security & Build
 
-*   **Dependencies:**
-    *   `compileSdk = 36`: Bleeding edge. Ensure testing on older devices (MinSdk 30 is safe).
-    *   `kotlinx-serialization-json:1.7.3!!`: Forced version resolution. Acceptable if verified.
-*   **Clipboard:**
-    *   `ClipboardRepository` uses `SecurityUtils` (inferred) to filter passwords/OTPs.
-    *   `ClipboardStrip` (UI) exists in `MainKeyboardView`.
-
-## 🧪 Recommendations for Verification
-
-1.  **Unit Test for Multi-Touch:**
-    Create a Compose test that simulates two pointers down at the same time to ensure the second one doesn't cancel the first or get ignored.
-2.  **Verify AI Latency:**
-    The `GeminiPredictionClient` makes a network call. Ensure this is **not** blocking the Main Thread (it uses `suspend`, so it should be fine, but verify `Dispatcher.IO` usage in `SmartPredictionUseCase`).
-3.  **Update Docs:**
-    Immediate update of `FEATURE_GAP_ANALYSIS.md` is required to reflect reality.
+*   **Dependencies:** `compileSdk = 36` is used.
+*   **Clipboard:** `ClipboardRepository` uses `SecurityUtils` to filter passwords/OTPs correctly.
