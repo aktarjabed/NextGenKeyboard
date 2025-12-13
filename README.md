@@ -1,34 +1,39 @@
 # 🎹 NextGenKeyboard
 
-A modern, feature-rich Android keyboard application built with the latest Android technologies, offering intelligent typing, voice input, GIF support, and advanced privacy features.
+A modern, production-ready Android keyboard application built with **Jetpack Compose** and **Google Gemini AI**. NextGenKeyboard combines the speed of native Android development with the intelligence of Large Language Models to deliver a superior typing experience.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com)
 [![API](https://img.shields.io/badge/API-30%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=30)
-[![Kotlin](https://img.shields.io/badge/Kotlin-1.9+-blue.svg)](https://kotlinlang.org)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0-blue.svg)](https://kotlinlang.org)
+[![AI](https://img.shields.io/badge/AI-Gemini-purple.svg)](https://deepmind.google/technologies/gemini/)
+
+---
+
+## 🚀 What's New in Phase 3 (AI & Robustness)
+
+We have reached a major milestone in development with the completion of Phase 3. Key highlights include:
+
+*   **🧠 Gemini AI Integration**: Context-aware next-word predictions powered by Google's **Gemini 1.5 Flash** model. The keyboard understands the nuance of your sentence to suggest the most relevant words.
+*   **⚡ True Multi-Touch Support**: A completely rewritten gesture detector that supports rapid two-thumb typing, key rollover, and shift-key combinations without dropped inputs.
+*   **🛡️ Robust Swipe Typing**: Optimized **O(1) Spatial Key Grid** algorithm that instantly maps swipe paths to keys, ensuring smooth performance even on low-end devices.
+*   **🔧 Advanced Autocorrect**: A hybrid engine combining instant common-typo lookup with Levenshtein distance calculations for smart, non-intrusive corrections.
 
 ---
 
 ## ✨ Features
 
-### 🚀 Production Ready Features
-
-- **🎤 Voice Typing**: Seamless voice-to-text conversion with real-time speech recognition
-- **🖼️ GIF Keyboard**: Integrated Giphy support for searching and inserting GIFs
-- **📋 Clipboard Manager**: Advanced clipboard history with pinned clips, search, and encryption support
-- **🔤 Advanced Autocorrect**: Intelligent autocorrect engine with dictionary-based suggestions
-- **🌍 Multi-Language Support**: Support for 35+ languages including Latin, Cyrillic, Arabic, Hebrew, Greek, and Indic scripts.
-- **🎨 Dynamic Themes**: Switch instantly between Light, Dark, Neon, Glass, Material You, and Gaming themes.
+### Core Experience
+- **👆 Swipe Typing**: Efficient glide typing with dynamic path tracing and smart error correction.
+- **🎤 Voice Typing**: Seamless, real-time voice-to-text conversion.
+- **🌍 Multi-Language Support**: Support for **35+ languages** including Latin, Cyrillic, Arabic (RTL), Hebrew, Greek, and Indic scripts.
 - **😀 Emoji Keyboard**: Full emoji support with categorized browsing and "Recent" history.
-- **👆 Swipe Typing**: Efficient swipe-to-type functionality with O(1) performance optimization.
-- **🔐 Privacy & Security**: Local data processing with optional encryption for sensitive data
-- **🧠 AI-Powered Predictions**: Gemini AI integration for context-aware suggestions.
+- **🖼️ GIF Keyboard**: Integrated Giphy support for searching and inserting GIFs directly from the keyboard.
 
-### 🔮 Future Roadmap
-
-- **🤖 Enhanced AI**: Advanced ML-based next-word predictions using on-device models.
-- **☁️ Cloud Sync**: Optional secure backup and sync across devices.
-- **🎨 Custom Theme Builder**: Create your own themes with custom colors and backgrounds.
+### Smart & Secure
+- **📋 Clipboard Manager**: Advanced history with pinned clips, search, and **security filtering** (automatically hides passwords and OTPs).
+- **🔐 Privacy First**: All typing data is processed locally. AI predictions communicate securely with Google's API only when enabled, and no personal data is stored on external servers.
+- **🎨 Dynamic Themes**: Switch instantly between Light, Dark, Neon, Glass, Material You, and Gaming themes.
 
 ---
 
@@ -37,9 +42,8 @@ A modern, feature-rich Android keyboard application built with the latest Androi
 - **Minimum SDK**: Android 11 (API 30)
 - **Target SDK**: Android 14 (API 36)
 - **Compile SDK**: 36
-- **Kotlin**: 2.0+
-- **Gradle**: 8.0+
-- **JDK**: 17
+- **Architecture**: ARM64 / x86_64
+- **Network**: Internet connection required for AI Predictions and GIF Search.
 
 ---
 
@@ -47,20 +51,19 @@ A modern, feature-rich Android keyboard application built with the latest Androi
 
 ### For Users
 
-1. Download the APK from the [Releases](https://github.com/aktarjabed/NextGenKeyboard/releases) page
-2. Enable installation from unknown sources in Android settings
-3. Install the APK
-4. Go to **Settings → System → Languages & Input → On-screen keyboard**
-5. Enable **NextGenKeyboard**
-6. Select NextGenKeyboard as your default keyboard
+1. Download the APK from the [Releases](https://github.com/aktarjabed/NextGenKeyboard/releases) page.
+2. Enable installation from unknown sources in Android settings.
+3. Install the APK.
+4. Go to **Settings → System → Languages & Input → On-screen keyboard**.
+5. Enable **NextGenKeyboard**.
+6. Select NextGenKeyboard as your default keyboard.
 
 ### For Developers
 
 #### Prerequisites
-
 - Android Studio Koala or later
-- Git installed on your system
-- Android SDK installed
+- JDK 17
+- Android SDK API 36
 
 #### Clone and Build
 
@@ -69,11 +72,10 @@ A modern, feature-rich Android keyboard application built with the latest Androi
 git clone https://github.com/aktarjabed/NextGenKeyboard.git
 cd NextGenKeyboard
 
-# Open the project in Android Studio
-# Or build from command line:
-./gradlew assembleDebug
+# Create local.properties with your SDK path if not exists
+# echo "sdk.dir=/path/to/android/sdk" > local.properties
 
-# Install on connected device
+# Build and Install
 ./gradlew installDebug
 ```
 
@@ -81,92 +83,68 @@ cd NextGenKeyboard
 
 ## 🔑 Configuration
 
-The app requires API keys for full functionality. Create a `gradle.properties` file in the root directory:
+To unlock the full potential of NextGenKeyboard (AI Predictions & GIFs), you need to configure API keys.
+
+Create a `gradle.properties` file in the root directory:
 
 ```properties
-# Giphy API Key (for GIF keyboard)
+# Giphy API Key (Required for GIF keyboard)
+# Register at: https://developers.giphy.com/
 GIPHY_API_KEY=your_giphy_api_key_here
 
-# Gemini API Key (for AI predictions)
+# Gemini API Key (Required for Smart Predictions)
+# Get key at: https://makersuite.google.com/app/apikey
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-### Obtaining API Keys
-
-- **Giphy**: Register at [Giphy Developers](https://developers.giphy.com/)
-- **Gemini**: Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-
-> **Note**: The keyboard will work without API keys, but GIF search and AI predictions will be disabled.
+> **Note**: The app will function as a standard keyboard without these keys, but smart features will be disabled.
 
 ---
 
 ## 🏗️ Architecture
 
-NextGenKeyboard follows **Clean Architecture** principles with **MVVM** pattern:
+NextGenKeyboard uses a modern, scalable architecture designed for stability and performance.
 
 ```
 app/
-├── data/
-│   ├── local/          # Room database, DAOs, and encryption
-│   ├── model/          # Data models and entities
-│   └── repository/     # Repository implementations
-├── di/                 # Dependency injection (Hilt modules)
-├── feature/            # Feature-specific modules
-│   ├── ai/            # AI prediction engine
-│   ├── autocorrect/   # Autocorrect logic
-│   ├── backup/        # Settings backup
-│   ├── gif/           # Giphy integration
-│   ├── keyboard/      # Keyboard utilities
-│   ├── swipe/         # Swipe typing (O(1) Spatial Grid)
-│   └── voice/         # Voice input manager
-├── service/           # Keyboard IME service
-├── ui/                # UI components and screens
-│   ├── screens/       # Activities and composables
-│   ├── theme/         # Theme definitions
-│   └── view/          # Custom views and keyboard layouts
-└── util/              # Utility functions and extensions
+├── feature/            # Modularized features
+│   ├── ai/            # Gemini AI client & prediction logic
+│   ├── swipe/         # O(1) Spatial Grid & Path Processor
+│   ├── autocorrect/   # Hybrid Levenshtein + Lookup engine
+│   └── keyboard/      # Core keyboard logic
+├── service/           # IMS Implementation
+│   └── NextGenKeyboardService.kt # Bridged lifecycle owner
+├── ui/                # Jetpack Compose UI
+│   └── MainKeyboardView.kt # Entry point for Compose
+└── data/              # Data Layer (Room, DataStore)
 ```
 
-### Key Technologies
-
-| Technology | Purpose |
-|------------|---------|
-| **Jetpack Compose** | Modern declarative UI framework |
-| **Kotlin Coroutines** | Asynchronous programming |
-| **Flow** | Reactive data streams |
-| **Hilt** | Dependency injection |
-| **Room** | Local database with type-safe queries |
-| **DataStore** | Key-value storage for preferences |
-| **WorkManager** | Background task scheduling |
-| **Firebase** | Crashlytics and analytics |
-| **Gemini AI** | Context-aware text predictions |
-| **Giphy SDK** | GIF search and integration |
-| **Security Crypto** | Data encryption |
+### Technical Highlights
+*   **Hybrid Lifecycle Management**: A custom implementation bridges the Android Service lifecycle with Jetpack Compose's `ViewModel` and `LifecycleOwner` requirements, ensuring modern state management within an IME service.
+*   **Dependency Injection**: Extensive use of **Hilt** for injecting dependencies like `SwipePathProcessor` and `AiContextManager`.
+*   **Coroutines & Flow**: Heavy use of Kotlin Coroutines for off-main-thread dictionary loading and AI network calls.
 
 ---
 
 ## 🧪 Testing
 
+We maintain a high standard of code quality with comprehensive unit and instrumentation tests.
+
 ```bash
-# Run unit tests
+# Run unit tests (including Autocorrect & AI logic)
 ./gradlew test
 
 # Run instrumented tests
 ./gradlew connectedAndroidTest
-
-# Generate test coverage report
-./gradlew jacocoTestReport
 ```
 
 ---
 
 ## 🔒 Privacy & Security
 
-- **Local Processing**: All typing data is processed locally on your device
-- **No Data Collection**: We do not collect or transmit your keystrokes
-- **Optional Analytics**: Firebase Crashlytics can be disabled in settings
-- **Encryption**: Sensitive clipboard data is encrypted using Android Security Crypto
-- **Permissions**: Only necessary permissions are requested (microphone for voice typing, internet for GIFs)
+*   **Local Processing**: Keystrokes are processed locally for autocorrect and standard predictions.
+*   **Sensitive Data Protection**: The clipboard manager uses regex-based filtering to detect and mask sensitive information (passwords, credit cards) automatically.
+*   **Crash Reporting**: Optional Firebase Crashlytics integration (disabled by default, user opt-in required).
 
 For full details, see our [Privacy Policy](PRIVACY_POLICY.md).
 
@@ -174,9 +152,8 @@ For full details, see our [Privacy Policy](PRIVACY_POLICY.md).
 
 ## 💬 Support & Contact
 
-- **Issues**: [GitHub Issues](https://github.com/aktarjabed/NextGenKeyboard/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/aktarjabed/NextGenKeyboard/discussions)
-- **Email**: support@nextgenkeyboard.com
+*   **Issues**: [GitHub Issues](https://github.com/aktarjabed/NextGenKeyboard/issues)
+*   **Discussions**: [GitHub Discussions](https://github.com/aktarjabed/NextGenKeyboard/discussions)
 
 ---
 
