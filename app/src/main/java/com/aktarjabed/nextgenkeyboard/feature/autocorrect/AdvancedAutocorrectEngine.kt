@@ -3,6 +3,8 @@ package com.aktarjabed.nextgenkeyboard.feature.autocorrect
 import android.content.Context
 import androidx.collection.LruCache
 import com.aktarjabed.nextgenkeyboard.R
+import com.aktarjabed.nextgenkeyboard.data.local.LearnedWordDao
+import com.aktarjabed.nextgenkeyboard.data.local.LearnedWordEntity
 import com.aktarjabed.nextgenkeyboard.data.model.Language
 import com.aktarjabed.nextgenkeyboard.state.CorrectionType
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -26,7 +28,8 @@ import kotlin.math.min
  */
 @Singleton
 class AdvancedAutocorrectEngine @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val learnedWordDao: LearnedWordDao
 ) {
     // Thread-safe collections
     private val dictionaries = ConcurrentHashMap<String, Set<String>>()
@@ -39,9 +42,20 @@ class AdvancedAutocorrectEngine @Inject constructor(
     private val suggestionCache = LruCache<String, List<AdvancedSuggestion>>(100)
 
     init {
-        // Load dictionaries asynchronously on init
+        // Load dictionaries and learned words asynchronously on init
         engineScope.launch {
             loadDictionaries()
+            loadLearnedWords()
+        }
+    }
+
+    private suspend fun loadLearnedWords() = withContext(Dispatchers.IO) {
+        try {
+            val words = learnedWordDao.getAllWordsSync()
+            learnedWords.addAll(words.map { it.word.lowercase() })
+            Timber.d("✅ Loaded ${words.size} learned words from DB")
+        } catch (e: Exception) {
+            Timber.e(e, "Error loading learned words")
         }
     }
 
@@ -245,8 +259,27 @@ class AdvancedAutocorrectEngine @Inject constructor(
 
     fun learnWord(word: String) {
         if (word.length >= 3 && word.all { it.isLetter() }) {
-            learnedWords.add(word.lowercase())
-            Timber.d("✅ Learned new word: $word")
+            val lowerWord = word.lowercase()
+            // Add to in-memory set (returns true if new)
+            val isNewInMemory = learnedWords.add(lowerWord)
+
+            if (isNewInMemory) {
+                Timber.d("✅ Learned new word: $word")
+            }
+
+            // Always update database (insert or increment)
+            engineScope.launch(Dispatchers.IO) {
+                try {
+                    val existing = learnedWordDao.getWord(lowerWord)
+                    if (existing != null) {
+                        learnedWordDao.incrementFrequency(lowerWord)
+                    } else {
+                        learnedWordDao.insert(LearnedWordEntity(word = lowerWord))
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to persist/update learned word: $word")
+                }
+            }
         }
     }
 

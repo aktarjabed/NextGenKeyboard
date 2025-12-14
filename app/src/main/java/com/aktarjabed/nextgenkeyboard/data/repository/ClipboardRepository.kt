@@ -7,7 +7,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.ContextCompat
-import com.aktarjabed.nextgenkeyboard.data.local.ClipboardDatabase
+import com.aktarjabed.nextgenkeyboard.data.local.NextGenDatabase
 import com.aktarjabed.nextgenkeyboard.data.model.Clip
 import com.aktarjabed.nextgenkeyboard.util.SecurityUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -30,7 +30,7 @@ import javax.inject.Inject
  */
 class ClipboardRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val database: ClipboardDatabase,
+    private val database: NextGenDatabase,
     private val preferencesRepository: PreferencesRepository
 ) {
     private val clipboardManager =

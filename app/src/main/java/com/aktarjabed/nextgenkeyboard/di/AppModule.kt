@@ -5,6 +5,8 @@ import com.aktarjabed.nextgenkeyboard.BuildConfig
 import com.aktarjabed.nextgenkeyboard.feature.ai.AiPredictionClient
 import com.aktarjabed.nextgenkeyboard.feature.ai.GeminiPredictionClient
 import com.aktarjabed.nextgenkeyboard.feature.ai.MockPredictionClient
+import com.aktarjabed.nextgenkeyboard.feature.ai.PredictionEngine
+import com.aktarjabed.nextgenkeyboard.feature.ai.UnifiedPredictionEngine
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -31,5 +33,11 @@ object AppModule {
         } else {
             MockPredictionClient()
         }
+    }
+
+    @Provides
+    @Singleton
+    fun providePredictionEngine(unifiedPredictionEngine: UnifiedPredictionEngine): PredictionEngine {
+        return unifiedPredictionEngine
     }
 }

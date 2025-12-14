@@ -3,9 +3,11 @@ package com.aktarjabed.nextgenkeyboard.feature.autocorrect
 import android.content.Context
 import android.content.res.Resources
 import com.aktarjabed.nextgenkeyboard.data.model.Language
+import com.aktarjabed.nextgenkeyboard.data.local.LearnedWordDao
 import com.aktarjabed.nextgenkeyboard.state.CorrectionType
 // import com.aktarjabed.nextgenkeyboard.state.WordContext // Removed incorrect import
 import com.google.common.truth.Truth.assertThat
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -23,12 +25,14 @@ class AdvancedAutocorrectEngineTest {
 
     private lateinit var context: Context
     private lateinit var resources: Resources
+    private lateinit var learnedWordDao: LearnedWordDao
     private lateinit var autocorrectEngine: AdvancedAutocorrectEngine
 
     @Before
     fun setup() {
         context = mockk(relaxed = true)
         resources = mockk(relaxed = true)
+        learnedWordDao = mockk(relaxed = true)
         every { context.resources } returns resources
 
         // Mock dictionary loading
@@ -36,7 +40,10 @@ class AdvancedAutocorrectEngineTest {
             ByteArrayInputStream("the\nand\nyou".toByteArray())
         }
 
-        autocorrectEngine = AdvancedAutocorrectEngine(context)
+        // Mock DB loading
+        coEvery { learnedWordDao.getAllWordsSync() } returns emptyList()
+
+        autocorrectEngine = AdvancedAutocorrectEngine(context, learnedWordDao)
     }
 
     @Test
