@@ -179,7 +179,14 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     override fun onDestroy() {
         try {
             lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-            composeView?.disposeComposition()
+
+            // Fix memory leaks on Android 14+
+            composeView?.let { view ->
+                view.disposeComposition()
+                androidx.lifecycle.ViewTreeLifecycleOwner.set(view, null)
+                androidx.lifecycle.ViewTreeViewModelStoreOwner.set(view, null)
+                androidx.savedstate.ViewTreeSavedStateRegistryOwner.set(view, null)
+            }
             composeView = null
 
             // if (::voiceInputManager.isInitialized) { // Check removed, assumes safe destroy or init
@@ -304,6 +311,9 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
         // Observe current language
         val languageCode by preferencesRepository.keyboardLanguage.collectAsState(initial = "en")
 
+        // Observe clipboard history
+        val recentClips by clipboardRepository.getRecentClips().collectAsState(initial = emptyList())
+
         // Handle voice input results
         LaunchedEffect(voiceState) {
             if (voiceState is VoiceInputState.Result) {
@@ -353,7 +363,11 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                     swipePathProcessor = swipePathProcessor, // Injected processor
                     utilityKeys = utilityKeys, // Injected utility keys
                     onUtilityKeyClick = { action -> handleUtilityAction(action) },
-                    theme = currentTheme // Pass resolved theme
+                    theme = currentTheme, // Pass resolved theme
+                    recentClips = recentClips, // Pass real clipboard history
+                    onClipSelected = { clipContent ->
+                        commitText(clipContent)
+                    }
                 )
             }
 
