@@ -2,6 +2,7 @@
 <resources>
     <!-- Base Application Theme -->
     <style name="Theme.NextGenKeyboard" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
         <item name="colorPrimary">@color/neon_blue</item>
         <item name="colorPrimaryVariant">@color/dark_blue</item>
         <item name="colorOnPrimary">@color/white</item>

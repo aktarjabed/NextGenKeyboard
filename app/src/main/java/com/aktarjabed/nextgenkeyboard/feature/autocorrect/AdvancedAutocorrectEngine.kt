@@ -132,6 +132,21 @@ class AdvancedAutocorrectEngine @Inject constructor(
                 // but here we just accept it.
             } else {
                 // 2. Spelling corrections
+            // First check common typos for O(1) correction
+            val commonTypo = processInput(lowerWord)
+            if (commonTypo != lowerWord) {
+                suggestions.add(
+                    AdvancedSuggestion(
+                        original = word,
+                        suggestion = matchCase(commonTypo, word),
+                        confidence = 1.0f,
+                        type = CorrectionType.AUTO_CORRECT,
+                        reasoning = "Common typo"
+                    )
+                )
+            }
+
+            // Then do expensive edit distance search
                 val corrections = findOptimizedSpellingCorrections(lowerWord, dictionary)
                 suggestions.addAll(corrections)
             }

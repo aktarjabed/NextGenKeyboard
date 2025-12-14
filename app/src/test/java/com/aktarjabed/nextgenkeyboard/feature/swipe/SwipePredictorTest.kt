@@ -22,12 +22,14 @@ class SwipePredictorTest {
         val prefix = "th"
 
         // Act
-        val candidates = predictor.getSuggestions(prefix)
+        val candidates = predictor.getSuggestions(prefix, limit = 4)
 
         // Assert
         assertThat(candidates).isNotEmpty()
-        // Based on the hardcoded frequencies in SwipePredictor
-        assertThat(candidates).containsExactly("the", "this", "that", "think").inOrder()
+        // Based on the hardcoded frequencies in SwipePredictor:
+        // the(100), this(90), that(85), think(85)
+        // Order of equal frequency items ("that", "think") depends on map iteration order
+        assertThat(candidates).containsExactly("the", "this", "that", "think")
     }
 
     @Test
@@ -75,8 +77,9 @@ class SwipePredictorTest {
 
     @Test
     fun learnWord_withShortWord_isIgnored() {
-        predictor.learnWord("hi")
-        val candidates = predictor.getSuggestions("hi")
+        // "xy" is not in dictionary. "hi" matches "his", "him" etc.
+        predictor.learnWord("xy")
+        val candidates = predictor.getSuggestions("xy")
         assertThat(candidates).isEmpty()
     }
 }
