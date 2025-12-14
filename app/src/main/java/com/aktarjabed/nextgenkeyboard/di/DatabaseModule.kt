@@ -7,6 +7,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.aktarjabed.nextgenkeyboard.BuildConfig
 import com.aktarjabed.nextgenkeyboard.data.local.ClipboardDao
 import com.aktarjabed.nextgenkeyboard.data.local.ClipboardDatabase
+import com.aktarjabed.nextgenkeyboard.data.local.LearnedWordDao
+import com.aktarjabed.nextgenkeyboard.data.local.NextGenDatabase
 import com.aktarjabed.nextgenkeyboard.util.SecurityUtils
 import net.sqlcipher.database.SupportFactory
 import dagger.Module
@@ -23,39 +25,52 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideClipboardDatabase(
+    fun provideNextGenDatabase(
         @ApplicationContext context: Context
-    ): ClipboardDatabase {
+    ): NextGenDatabase {
         // Retrieve or generate the passphrase for SQLCipher
         val passphrase = SecurityUtils.getDatabasePassphrase(context)
         val factory = SupportFactory(passphrase)
 
+        // Note: Reuse the old database name "clipboard_database" to attempt preserving data
+        // even though we are upgrading the class to NextGenDatabase.
+        // We will treat this as an upgrade from v3 to v4.
         return Room.databaseBuilder(
             context,
-            ClipboardDatabase::class.java,
-            ClipboardDatabase.DATABASE_NAME
+            NextGenDatabase::class.java,
+            ClipboardDatabase.DATABASE_NAME // Reusing filename
         )
             .openHelperFactory(factory) // Enable SQLCipher encryption
-            .addMigrations(ClipboardDatabase.MIGRATION_1_2, ClipboardDatabase.MIGRATION_2_3)
+            // Include old migrations to support upgrades from older versions
+            .addMigrations(
+                ClipboardDatabase.MIGRATION_1_2,
+                ClipboardDatabase.MIGRATION_2_3,
+                NextGenDatabase.MIGRATION_3_4
+            )
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
-                    Timber.d("Database created successfully (Encrypted)")
+                    Timber.d("NextGenDatabase created successfully (Encrypted)")
                 }
 
                 override fun onOpen(db: SupportSQLiteDatabase) {
                     super.onOpen(db)
-                    Timber.d("Database opened successfully (Encrypted)")
+                    Timber.d("NextGenDatabase opened successfully (Encrypted)")
                 }
             })
-            // Enforce destructive migration for encryption transition
             .fallbackToDestructiveMigration()
             .build()
     }
 
     @Provides
     @Singleton
-    fun provideClipboardDao(database: ClipboardDatabase): ClipboardDao {
+    fun provideClipboardDao(database: NextGenDatabase): ClipboardDao {
         return database.clipboardDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideLearnedWordDao(database: NextGenDatabase): LearnedWordDao {
+        return database.learnedWordDao()
     }
 }

@@ -41,6 +41,7 @@ import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePathProcessor
 import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePredictor
 import com.aktarjabed.nextgenkeyboard.feature.voice.VoiceInputManager
 import com.aktarjabed.nextgenkeyboard.feature.voice.VoiceInputState
+import com.aktarjabed.nextgenkeyboard.ui.gestures.GestureManager
 import com.aktarjabed.nextgenkeyboard.ui.screens.MainActivity
 import com.aktarjabed.nextgenkeyboard.ui.theme.KeyboardThemes
 import com.aktarjabed.nextgenkeyboard.ui.theme.NextGenKeyboardTheme
@@ -94,6 +95,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     @Inject lateinit var swipePredictor: SwipePredictor
     @Inject lateinit var swipePathProcessor: SwipePathProcessor
     @Inject lateinit var utilityKeys: List<UtilityKey>
+    @Inject lateinit var gestureManager: GestureManager
 
     // Injected for ViewModel creation
     @Inject lateinit var smartPredictionUseCase: SmartPredictionUseCase
@@ -183,9 +185,9 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
             // Fix memory leaks on Android 14+
             composeView?.let { view ->
                 view.disposeComposition()
-                androidx.lifecycle.ViewTreeLifecycleOwner.set(view, null)
-                androidx.lifecycle.ViewTreeViewModelStoreOwner.set(view, null)
-                androidx.savedstate.ViewTreeSavedStateRegistryOwner.set(view, null)
+                view.setViewTreeLifecycleOwner(null)
+                view.setViewTreeViewModelStoreOwner(null)
+                view.setViewTreeSavedStateRegistryOwner(null)
             }
             composeView = null
 
@@ -362,6 +364,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                     swipePredictor = swipePredictor, // Injected predictor
                     swipePathProcessor = swipePathProcessor, // Injected processor
                     utilityKeys = utilityKeys, // Injected utility keys
+                    gestureManager = gestureManager, // Injected gesture manager
                     onUtilityKeyClick = { action -> handleUtilityAction(action) },
                     theme = currentTheme, // Pass resolved theme
                     recentClips = recentClips, // Pass real clipboard history

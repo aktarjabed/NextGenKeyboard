@@ -50,6 +50,7 @@ import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePathProcessor
 import com.aktarjabed.nextgenkeyboard.feature.swipe.SwipePredictor
 import com.aktarjabed.nextgenkeyboard.ui.theme.KeyboardTheme
 import com.aktarjabed.nextgenkeyboard.ui.theme.KeyboardThemes
+import com.aktarjabed.nextgenkeyboard.ui.gestures.GestureManager
 
 @Composable
 fun MainKeyboardView(
@@ -63,6 +64,7 @@ fun MainKeyboardView(
     swipePredictor: SwipePredictor,
     swipePathProcessor: SwipePathProcessor,
     utilityKeys: List<UtilityKey> = emptyList(),
+    gestureManager: GestureManager,
     onUtilityKeyClick: (UtilityKeyAction) -> Unit = {},
     theme: KeyboardTheme = KeyboardThemes.LIGHT, // Injected Theme
     onClipboardClick: () -> Unit = {},
@@ -176,38 +178,43 @@ fun MainKeyboardView(
             }
 
             // Main keyboard layout with Swipe Detector
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(theme.keyPadding) // Apply Theme Padding
-                    .onGloballyPositioned { coordinates ->
-                        keyboardRootOffset = coordinates.boundsInRoot().topLeft
-                    }
-                    .detectSwipeGesture(
-                        onSwipeComplete = { localPath ->
-                            // Convert local path to global path
-                            val globalPath = localPath.map { it + keyboardRootOffset }
-                            val keySequence = swipePathProcessor.processPathToKeySequence(globalPath)
-                            if (keySequence.isNotEmpty()) {
-                                val prediction = swipePredictor.predictWord(keySequence)
-                                if (prediction.isNotEmpty()) {
-                                    onSuggestionClick(prediction)
-                                }
-                            }
-                        },
-                        onTap = { localOffset ->
-                            // Convert local tap to global coordinate
-                            val globalOffset = localOffset + keyboardRootOffset
-                            val key = swipePathProcessor.findKeyAt(globalOffset)
-                            if (key != null) {
-                                val currentTime = System.currentTimeMillis()
-                                if (currentTime - lastTapTime > 50) { // Debounce threshold 50ms
-                                    lastTapTime = currentTime
-                                    onKeyClick(key)
-                                }
+            val gestureCallback = remember(keyboardRootOffset, swipePathProcessor, swipePredictor, lastTapTime) {
+                object : GestureManager.GestureCallback {
+                    override fun onSwipe(path: List<Offset>) {
+                        val globalPath = path.map { it + keyboardRootOffset }
+                        val keySequence = swipePathProcessor.processPathToKeySequence(globalPath)
+                        if (keySequence.isNotEmpty()) {
+                            val prediction = swipePredictor.predictWord(keySequence)
+                            if (prediction.isNotEmpty()) {
+                                onSuggestionClick(prediction)
                             }
                         }
-                    ),
+                    }
+
+                    override fun onTap(position: Offset) {
+                        val globalOffset = position + keyboardRootOffset
+                        val key = swipePathProcessor.findKeyAt(globalOffset)
+                        if (key != null) {
+                            val currentTime = System.currentTimeMillis()
+                            if (currentTime - lastTapTime > 50) {
+                                lastTapTime = currentTime
+                                onKeyClick(key)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Column(
+                modifier = gestureManager.applyGestures(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(theme.keyPadding) // Apply Theme Padding
+                        .onGloballyPositioned { coordinates ->
+                            keyboardRootOffset = coordinates.boundsInRoot().topLeft
+                        },
+                    callback = gestureCallback
+                ),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 language.layout.rows.forEach { keyRow ->

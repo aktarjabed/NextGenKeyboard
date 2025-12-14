@@ -9,7 +9,7 @@ import javax.inject.Singleton
 
 @Singleton
 class SmartPredictionUseCase @Inject constructor(
-    private val client: AiPredictionClient,
+    private val predictionEngine: PredictionEngine,
     private val promptBuilder: PromptBuilder
 ) {
 
@@ -49,11 +49,13 @@ class SmartPredictionUseCase @Inject constructor(
             }
 
             // Generate predictions with timeout
+            // Note: UnifiedPredictionEngine now handles timeout internally for Gemini,
+            // but we keep this outer timeout for safety.
             val predictions = withTimeout(PREDICTION_TIMEOUT_MS) {
                 try {
-                    client.generatePredictions(prompt)
+                    predictionEngine.predict(prompt)
                 } catch (e: Exception) {
-                    Timber.e(e, "Error generating predictions from client")
+                    Timber.e(e, "Error generating predictions from engine")
                     emptyList()
                 }
             }
