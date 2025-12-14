@@ -158,6 +158,7 @@ class KeyboardViewModel @Inject constructor(
         if (currentState.isPasswordField) return
 
         // Debounce predictions to avoid spamming API on every keystroke
+        // Using a 500ms delay to ensure we only query when the user pauses typing
         predictionJob?.cancel()
         predictionJob = viewModelScope.launch {
             delay(500) // Wait 500ms after last keystroke
@@ -165,8 +166,10 @@ class KeyboardViewModel @Inject constructor(
             val context = aiContextManager.getContext(textBeforeCursor)
             val predictions = smartPredictionUseCase.getPredictions(context)
 
-            if (predictions.isNotEmpty()) {
-                _uiState.value = currentState.copy(suggestions = predictions)
+            // Ensure we are still in a valid state to update UI
+            val freshState = _uiState.value as? KeyboardUiState.Ready
+            if (freshState != null && !freshState.isPasswordField) {
+                 _uiState.value = freshState.copy(suggestions = predictions)
             }
         }
     }

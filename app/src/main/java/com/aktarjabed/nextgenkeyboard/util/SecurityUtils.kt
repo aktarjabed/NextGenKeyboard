@@ -64,4 +64,34 @@ object SecurityUtils {
             pattern.containsMatchIn(lowerText)
         }
     }
+
+    /**
+     * Generates or retrieves a secure encryption key for the database.
+     * Uses EncryptedSharedPreferences (which uses AndroidKeyStore under the hood)
+     * to securely store the generated database key.
+     */
+    fun getDatabasePassphrase(context: android.content.Context): ByteArray {
+        val masterKeyAlias = androidx.security.crypto.MasterKeys.getOrCreate(androidx.security.crypto.MasterKeys.AES256_GCM_SPEC)
+
+        val prefs = androidx.security.crypto.EncryptedSharedPreferences.create(
+            "secure_db_prefs",
+            masterKeyAlias,
+            context,
+            androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+
+        val key = "db_key"
+
+        var passphraseString = prefs.getString(key, null)
+        if (passphraseString == null) {
+            // Generate a random 32-byte key
+            val randomBytes = ByteArray(32)
+            java.security.SecureRandom().nextBytes(randomBytes)
+            passphraseString = android.util.Base64.encodeToString(randomBytes, android.util.Base64.NO_WRAP)
+            prefs.edit().putString(key, passphraseString).apply()
+        }
+
+        return android.util.Base64.decode(passphraseString, android.util.Base64.NO_WRAP)
+    }
 }

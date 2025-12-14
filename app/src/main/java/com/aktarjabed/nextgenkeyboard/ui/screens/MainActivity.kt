@@ -37,9 +37,6 @@ class MainActivity : ComponentActivity() {
 
         Timber.d("MainActivity created")
 
-        val prefs = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        // var isFirstLaunch = prefs.getBoolean("is_first_launch", true) // Unused for now
-
         setContent {
             NextGenKeyboardTheme {
                 Surface(
