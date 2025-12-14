@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -19,7 +20,10 @@ import javax.inject.Singleton
 
 // DataStore extension at top level to ensure singleton behavior
 private val Context.preferencesDataStore: DataStore<Preferences> by preferencesDataStore(
-    name = "nextgen_preferences"
+    name = "nextgen_preferences",
+    produceMigrations = { context ->
+        listOf(SharedPreferencesMigration(context, "com.aktarjabed.nextgenkeyboard_preferences"))
+    }
 )
 
 /**

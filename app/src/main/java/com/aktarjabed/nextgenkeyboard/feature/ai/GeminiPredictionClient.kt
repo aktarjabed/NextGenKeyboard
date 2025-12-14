@@ -15,10 +15,7 @@ class GeminiPredictionClient @Inject constructor() : AiPredictionClient {
 
     // Cache and Rate Limiting
     private val cache = java.util.concurrent.ConcurrentHashMap<String, List<String>>()
-    private var requestCount = 0
-    private var lastResetTime = System.currentTimeMillis()
-    private val REQUEST_LIMIT_PER_MINUTE = 5
-    private val RESET_INTERVAL_MS = 60 * 1000L
+    private val rateLimiter = RateLimiter(limit = 5, intervalMs = 60 * 1000L)
 
     init {
         if (isAvailable()) {
@@ -49,29 +46,18 @@ class GeminiPredictionClient @Inject constructor() : AiPredictionClient {
         }
 
         // Rate Limiting Logic
-        val currentTime = System.currentTimeMillis()
-        if (currentTime - lastResetTime > RESET_INTERVAL_MS) {
-            requestCount = 0
-            lastResetTime = currentTime
-        }
-
-        if (requestCount >= REQUEST_LIMIT_PER_MINUTE) {
-            Timber.w("Gemini: Rate limit exceeded ($REQUEST_LIMIT_PER_MINUTE requests/min). Skipping API call.")
+        if (!rateLimiter.tryAcquire()) {
             return emptyList()
         }
 
         return try {
-            requestCount++
-            Timber.d("Gemini: Sending request ($requestCount/$REQUEST_LIMIT_PER_MINUTE)")
+            Timber.d("Gemini: Sending request (${rateLimiter.getUsage()})")
 
             val response = generativeModel?.generateContent(prompt)
             val text = response?.text ?: return emptyList()
 
-            // Expecting a comma-separated list or newlines.
-            val predictions = text.split(",", "\n")
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
-                .take(3) // Limit to 3 suggestions
+            // Parse response
+            val predictions = AiUtils.parsePredictions(text)
 
             // Cache the result
             if (predictions.isNotEmpty()) {
