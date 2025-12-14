@@ -55,6 +55,7 @@
     public static *** d(...);
     public static *** v(...);
     public static *** i(...);
+}
 # Add project specific ProGuard rules here.
 
 # Keep keyboard service (Required for Manifest reference)
