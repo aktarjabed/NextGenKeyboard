@@ -31,14 +31,10 @@ class AdvancedAutocorrectEngineTest {
         resources = mockk(relaxed = true)
         every { context.resources } returns resources
 
-        // Mock Android's Base64 class if it's used internally by any components
-        mockkStatic(android.util.Base64::class)
-        every { android.util.Base64.encodeToString(any(), any()) } returns "encoded_string"
-        every { android.util.Base64.decode(any<String>(), any()) } returns ByteArray(0)
-
         // Mock dictionary loading
-        val dictionaryStream = ByteArrayInputStream("the\nand\nyou".toByteArray())
-        every { resources.openRawResource(any()) } returns dictionaryStream
+        every { resources.openRawResource(any()) } answers {
+            ByteArrayInputStream("the\nand\nyou".toByteArray())
+        }
 
         autocorrectEngine = AdvancedAutocorrectEngine(context)
     }
