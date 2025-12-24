@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <include domain="sharedpref" path="nextgen_preferences.preferences_pb" />
-    <include domain="database" path="nextgen_keyboard_db" />
+    <exclude domain="sharedpref" path="nextgen_preferences.preferences_pb" />
+    <exclude domain="database" path="nextgen_keyboard_db" />
 </full-backup-content>

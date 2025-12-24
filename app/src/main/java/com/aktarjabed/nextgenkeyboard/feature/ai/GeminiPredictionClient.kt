@@ -18,26 +18,30 @@ class GeminiPredictionClient @Inject constructor() : AiPredictionClient {
     private val rateLimiter = RateLimiter(limit = 5, intervalMs = 60 * 1000L)
 
     init {
-        if (isAvailable()) {
-            try {
+        try {
+            if (isAvailable()) {
                 generativeModel = GenerativeModel(
                     modelName = "gemini-1.5-flash", // Use a fast model
                     apiKey = apiKey,
                     generationConfig = GenerationConfig.builder()
                         .build()
                 )
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to initialize Gemini model")
+                Timber.i("GeminiPredictionClient initialized successfully")
+            } else {
+                Timber.w("Gemini API Key is missing or invalid. AI features disabled.")
             }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to initialize Gemini model")
+            generativeModel = null
         }
     }
 
     override fun isAvailable(): Boolean {
-        return apiKey.isNotBlank()
+        return apiKey.isNotBlank() && apiKey != "null" && !apiKey.contains("TODO")
     }
 
     override suspend fun generatePredictions(prompt: String): List<String> {
-        if (!isAvailable()) return emptyList()
+        if (!isAvailable() || generativeModel == null) return emptyList()
 
         // Check local cache first
         if (cache.containsKey(prompt)) {
