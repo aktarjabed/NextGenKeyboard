@@ -14,12 +14,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.giphy.sdk.core.models.Media
+import com.aktarjabed.nextgenkeyboard.ui.common.GridContentKeyboard
 import com.aktarjabed.nextgenkeyboard.ui.viewmodel.KeyboardViewModel
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -45,39 +44,40 @@ fun GifKeyboard(
         tonalElevation = 4.dp,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Search GIFs...") },
-                    leadingIcon = { Icon(Icons.Default.Search, null) },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Close, null)
+        GridContentKeyboard(
+            topBar = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Search GIFs...") },
+                        leadingIcon = { Icon(Icons.Default.Search, null) },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Default.Close, null)
+                                }
                             }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, "Close")
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Default.Close, "Close")
+                    }
                 }
+            },
+            content = {
+                GifGrid(
+                    gifs = if (searchQuery.isNotBlank()) searchedGifs else trendingGifs,
+                    onGifSelected = onGifSelected
+                )
             }
-
-            GifGrid(
-                gifs = if (searchQuery.isNotBlank()) searchedGifs else trendingGifs,
-                onGifSelected = onGifSelected
-            )
-        }
+        )
     }
 }
 

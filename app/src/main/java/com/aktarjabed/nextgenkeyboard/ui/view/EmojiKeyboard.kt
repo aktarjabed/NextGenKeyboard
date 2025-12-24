@@ -1,15 +1,7 @@
 package com.aktarjabed.nextgenkeyboard.ui.view
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -34,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aktarjabed.nextgenkeyboard.data.model.EmojiData
+import com.aktarjabed.nextgenkeyboard.ui.common.GridContentKeyboard
 import com.aktarjabed.nextgenkeyboard.ui.viewmodel.KeyboardViewModel
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -69,71 +62,71 @@ fun EmojiKeyboard(
         selectedCategoryIndex = 0
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        // Category tabs
-        if (categories.isNotEmpty()) {
-            ScrollableTabRow(
-                selectedTabIndex = selectedCategoryIndex,
-                edgePadding = 0.dp
-            ) {
-                categories.forEachIndexed { index, category ->
-                    Tab(
-                        selected = selectedCategoryIndex == index,
-                        onClick = { selectedCategoryIndex = index },
-                        text = { Text(text = category) }
-                    )
-                }
-            }
-        }
-
-        // Emoji grid
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(8),
-            contentPadding = PaddingValues(8.dp),
-            modifier = Modifier.weight(1f)
-        ) {
-            val selectedCategory = categories.getOrNull(selectedCategoryIndex)
-            val emojis = selectedCategory?.let { emojiCategories[it] } ?: emptyList()
-
-            items(emojis) { emoji ->
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clickable {
-                            try {
-                                onEmojiSelected(emoji)
-                                coroutineScope.launch {
-                                    viewModel.trackEmojiUsage(emoji)
-                                }
-                            } catch (e: Exception) {
-                                Timber.e(e, "Error selecting emoji: $emoji")
-                            }
-                        }
-                        .padding(4.dp),
-                    contentAlignment = Alignment.Center
+    GridContentKeyboard(
+        modifier = modifier,
+        topBar = {
+            if (categories.isNotEmpty()) {
+                ScrollableTabRow(
+                    selectedTabIndex = selectedCategoryIndex,
+                    edgePadding = 0.dp
                 ) {
-                    Text(
-                        text = emoji,
-                        fontSize = 24.sp,
-                        textAlign = TextAlign.Center
-                    )
+                    categories.forEachIndexed { index, category ->
+                        Tab(
+                            selected = selectedCategoryIndex == index,
+                            onClick = { selectedCategoryIndex = index },
+                            text = { Text(text = category) }
+                        )
+                    }
+                }
+            }
+        },
+        content = {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(8),
+                contentPadding = PaddingValues(8.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                val selectedCategory = categories.getOrNull(selectedCategoryIndex)
+                val emojis = selectedCategory?.let { emojiCategories[it] } ?: emptyList()
+
+                items(emojis) { emoji ->
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clickable {
+                                try {
+                                    onEmojiSelected(emoji)
+                                    coroutineScope.launch {
+                                        viewModel.trackEmojiUsage(emoji)
+                                    }
+                                } catch (e: Exception) {
+                                    Timber.e(e, "Error selecting emoji: $emoji")
+                                }
+                            }
+                            .padding(4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = emoji,
+                            fontSize = 24.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        },
+        bottomBar = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(onClick = onBackToAlphabet) {
+                    Icon(Icons.Default.Keyboard, contentDescription = "Back to Alphabet")
+                }
+                IconButton(onClick = onBackspace) {
+                    Icon(Icons.Default.Backspace, contentDescription = "Backspace")
                 }
             }
         }
-
-        // Bottom bar with backspace and ABC button
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            IconButton(onClick = onBackToAlphabet) {
-                Icon(Icons.Default.Keyboard, contentDescription = "Back to Alphabet")
-            }
-            IconButton(onClick = onBackspace) {
-                Icon(Icons.Default.Backspace, contentDescription = "Backspace")
-            }
-        }
-    }
+    )
 }
