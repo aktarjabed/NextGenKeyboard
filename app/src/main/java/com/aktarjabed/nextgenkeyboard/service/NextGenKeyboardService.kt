@@ -310,6 +310,11 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
         val themeId by preferencesRepository.themePreference.collectAsState(initial = "light")
         val currentTheme = KeyboardThemes.ALL_THEMES.find { it.id == themeId } ?: KeyboardThemes.LIGHT
 
+        // Debug theme changes
+        LaunchedEffect(currentTheme) {
+            Timber.d("Theme updated to: ${currentTheme.id}")
+        }
+
         // Observe current language
         val languageCode by preferencesRepository.keyboardLanguage.collectAsState(initial = "en")
 
