@@ -21,6 +21,7 @@ class GestureManager @Inject constructor() {
     interface GestureCallback {
         fun onSwipe(path: List<Offset>)
         fun onTap(position: Offset)
+        fun onSwipeProgress(path: List<Offset>)
     }
 
     fun applyGestures(
@@ -29,7 +30,8 @@ class GestureManager @Inject constructor() {
     ): Modifier {
         return modifier.detectSwipeGesture(
             onSwipeComplete = { path -> callback.onSwipe(path) },
-            onTap = { position -> callback.onTap(position) }
+            onTap = { position -> callback.onTap(position) },
+            onSwipeProgress = { path -> callback.onSwipeProgress(path) }
         )
     }
 }

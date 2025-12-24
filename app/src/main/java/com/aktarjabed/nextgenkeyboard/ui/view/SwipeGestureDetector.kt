@@ -13,7 +13,8 @@ import timber.log.Timber
 
 fun Modifier.detectSwipeGesture(
     onSwipeComplete: (List<Offset>) -> Unit,
-    onTap: (Offset) -> Unit
+    onTap: (Offset) -> Unit,
+    onSwipeProgress: (List<Offset>) -> Unit = {}
 ): Modifier = pointerInput(Unit) {
     awaitEachGesture {
         try {
@@ -23,15 +24,18 @@ fun Modifier.detectSwipeGesture(
 
             // Initialize with the first pointer
             activePointers[down.id] = mutableListOf(down.position)
+            onSwipeProgress(activePointers[down.id]!!)
 
             do {
                 val event = awaitPointerEvent()
+                var hasUpdates = false
 
                 // Handle new pointers down or pointers moving
                 for (change in event.changes) {
                     if (change.changedToDown()) {
                         if (activePointers.size < MAX_POINTERS) {
                             activePointers[change.id] = mutableListOf(change.position)
+                            hasUpdates = true
                         } else {
                             Timber.w("Max pointers reached ($MAX_POINTERS), ignoring new pointer")
                         }
@@ -44,12 +48,26 @@ fun Modifier.detectSwipeGesture(
                                 // Safety: Cap individual path size if needed, though processor handles it too
                                 if (path.size < 600) {
                                     path.add(change.position)
+                                    hasUpdates = true
                                 }
                             }
                         }
                     }
                     if (change.pressed) {
                         change.consume()
+                    }
+                }
+
+                // Notify progress for visual trail
+                if (hasUpdates) {
+                    // We only track the first active pointer for the visual trail for now
+                    // to avoid visual clutter with multi-touch swipes
+                    val firstPointerId = activePointers.keys.firstOrNull()
+                    if (firstPointerId != null) {
+                        val path = activePointers[firstPointerId]
+                        if (path != null) {
+                            onSwipeProgress(path.toList())
+                        }
                     }
                 }
 
@@ -62,6 +80,9 @@ fun Modifier.detectSwipeGesture(
                         val path = activePointers.remove(pointerId)
                         if (path != null) {
                             try {
+                                // Clear visual trail on lift
+                                onSwipeProgress(emptyList())
+
                                 // Determine if it was a swipe or tap
                                 val isSwipe = path.size > 2 || (path.size > 1 && (path.last() - path.first()).getDistance() > 20f)
 
