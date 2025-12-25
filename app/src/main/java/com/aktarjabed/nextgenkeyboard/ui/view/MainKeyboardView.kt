@@ -84,8 +84,12 @@ fun MainKeyboardView(
     // Swipe Trail State
     var currentSwipePath by remember { mutableStateOf(emptyList<Offset>()) }
 
-    // Clear stale key positions when the language layout changes
-    DisposableEffect(language) {
+    // State for Symbol Mode
+    var isSymbolMode by remember { mutableStateOf(false) }
+
+    // Clear stale key positions when the language layout OR symbol mode changes
+    DisposableEffect(language, isSymbolMode) {
+        swipePathProcessor.clearKeyPositions()
         onDispose {
             swipePathProcessor.clearKeyPositions()
         }
@@ -232,19 +236,38 @@ fun MainKeyboardView(
                     ),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    language.layout.rows.forEach { keyRow ->
+                    // Determine Active Rows (Language vs Symbols)
+                    val activeRows = if (isSymbolMode) {
+                        // Convert KeyboardLayout.Symbol strings to KeyData structure locally
+                        // This replicates the structure from LanguageKeyboardDatabase for symbols
+                        com.aktarjabed.nextgenkeyboard.data.model.KeyboardLayout.Symbol.rows.map { rowStrings ->
+                            com.aktarjabed.nextgenkeyboard.data.model.KeyRow(
+                                rowStrings.filter { it !in listOf("📋", "SPACE", "⌫", "↵") } // Filter out bottom row if present in static def
+                                    .map { label ->
+                                        com.aktarjabed.nextgenkeyboard.data.model.KeyData(0, label, label)
+                                    }
+                            )
+                        }
+                    } else {
+                        language.layout.rows
+                    }
+
+                    // Render Active Rows
+                    activeRows.forEach { keyRow ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
                         ) {
                             keyRow.keys.forEach { keyData ->
+                                // Standard Key Rendering
+                                val weight = 1f
                                 Key(
                                     char = keyData.display,
                                     onClick = { onKeyClick(keyData.display) },
+                                    modifier = Modifier.weight(weight),
                                     onPositioned = { rect ->
                                         swipePathProcessor.registerKeyPosition(keyData.display, rect)
                                     },
-                                    // Pass theme styling to Key
                                     backgroundColor = theme.keyBackgroundColor,
                                     textColor = theme.keyTextColor,
                                     cornerRadius = theme.keyCornerRadius,
@@ -252,6 +275,69 @@ fun MainKeyboardView(
                                 )
                             }
                         }
+                    }
+
+                    // Render Manual Bottom Row (Toggle, Comma, Space, Dot, Backspace, Enter)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
+                    ) {
+                        // ?123 / ABC Toggle
+                        val modeLabel = if (isSymbolMode) "ABC" else "?123"
+                        Key(
+                            char = modeLabel,
+                            onClick = { isSymbolMode = !isSymbolMode },
+                            modifier = Modifier.weight(1.5f),
+                            backgroundColor = theme.secondaryAccentColor, // Highlight
+                            textColor = theme.keyTextColor
+                        )
+
+                        // Comma
+                        Key(
+                            char = ",",
+                            onClick = { onKeyClick(",") },
+                            modifier = Modifier.weight(1f),
+                            onPositioned = { r -> swipePathProcessor.registerKeyPosition(",", r) },
+                            backgroundColor = theme.keyBackgroundColor,
+                            textColor = theme.keyTextColor
+                        )
+
+                        // SPACE
+                        Key(
+                            char = "SPACE",
+                            onClick = { onKeyClick("SPACE") },
+                            modifier = Modifier.weight(4f), // Wide space
+                            backgroundColor = theme.keyBackgroundColor,
+                            textColor = theme.keyTextColor
+                        )
+
+                        // Period
+                        Key(
+                            char = ".",
+                            onClick = { onKeyClick(".") },
+                            modifier = Modifier.weight(1f),
+                            onPositioned = { r -> swipePathProcessor.registerKeyPosition(".", r) },
+                            backgroundColor = theme.keyBackgroundColor,
+                            textColor = theme.keyTextColor
+                        )
+
+                        // Backspace
+                        Key(
+                            char = "⌫",
+                            onClick = { onKeyClick("⌫") },
+                            modifier = Modifier.weight(1.5f),
+                            backgroundColor = theme.secondaryAccentColor,
+                            textColor = theme.keyTextColor
+                        )
+
+                        // Enter
+                        Key(
+                            char = "↵",
+                            onClick = { onKeyClick("↵") },
+                            modifier = Modifier.weight(1.5f),
+                            backgroundColor = theme.primaryAccentColor,
+                            textColor = theme.keyTextColor
+                        )
                     }
                 }
 

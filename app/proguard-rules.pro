@@ -1,13 +1,36 @@
 # NextGen Keyboard ProGuard Rules
 
+# ----------------------------------------------------------------------------
+# Application Rules
+# ----------------------------------------------------------------------------
+
 # Keep all classes in main package
--keep class com.nextgen.keyboard.** { *; }
+-keep class com.aktarjabed.nextgenkeyboard.** { *; }
+
+# Keep data models
+-keep class com.aktarjabed.nextgenkeyboard.data.model.** { *; }
+
+# Keep keyboard service (Required for Manifest reference)
+-keep class com.aktarjabed.nextgenkeyboard.service.NextGenKeyboardService { *; }
+
+# Keep Room entities and DAOs (Required for Reflection)
+-keep class com.aktarjabed.nextgenkeyboard.data.model.Clip { *; }
+-keep class com.aktarjabed.nextgenkeyboard.data.local.ClipboardDao { *; }
+-keep class com.aktarjabed.nextgenkeyboard.data.local.NextGenDatabase { *; }
+-keep class com.aktarjabed.nextgenkeyboard.data.local.LearnedWordEntity { *; }
+-keep class com.aktarjabed.nextgenkeyboard.data.local.LearnedWordDao { *; }
+
+# ----------------------------------------------------------------------------
+# Library Rules
+# ----------------------------------------------------------------------------
 
 # Hilt
 -dontwarn com.google.errorprone.annotations.**
 -keep class dagger.hilt.** { *; }
 -keep class javax.inject.** { *; }
 -keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper
+-keep class * extends androidx.hilt.work.HiltWorkerFactory
+-keep class * extends androidx.hilt.work.HiltWorker
 
 # Room
 -keep class * extends androidx.room.RoomDatabase
@@ -29,6 +52,11 @@
 # Timber
 -dontwarn org.jetbrains.annotations.**
 -keep class timber.log.** { *; }
+-assumenosideeffects class timber.log.Timber {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+}
 
 # DataStore
 -keep class androidx.datastore.*.** { *; }
@@ -37,43 +65,15 @@
 -keep class * extends android.inputmethodservice.InputMethodService { *; }
 -keep class android.view.inputmethod.** { *; }
 
-# Keep data models
--keep class com.nextgen.keyboard.data.model.** { *; }
-
-# Keep ViewModels
+# ViewModels
 -keep class * extends androidx.lifecycle.ViewModel {
     <init>();
 }
 
-# Keep Parcelable
+# Parcelable
 -keep class * implements android.os.Parcelable {
     public static final android.os.Parcelable$Creator *;
 }
-
-# Remove logging
--assumenosideeffects class android.util.Log {
-    public static *** d(...);
-    public static *** v(...);
-    public static *** i(...);
-}
-# Add project specific ProGuard rules here.
-
-# Keep keyboard service (Required for Manifest reference)
--keep class com.aktarjabed.nextgenkeyboard.service.NextGenKeyboardService { *; }
-
-# Keep all Hilt generated code
--keep class dagger.hilt.** { *; }
--keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
--keep class * extends androidx.hilt.work.HiltWorkerFactory
--keep class * extends androidx.hilt.work.HiltWorker
-
-# Keep Room entities (Required for Reflection)
--keep class com.aktarjabed.nextgenkeyboard.data.model.ClipboardEntity { *; }
--keep class com.aktarjabed.nextgenkeyboard.data.local.ClipboardDao { *; }
--keep class com.aktarjabed.nextgenkeyboard.data.local.ClipboardDatabase { *; }
-
-# Keep security classes (Prevent obfuscation of encryption logic if using reflection, otherwise obfuscate)
-# Removed -keep class com.aktarjabed.nextgenkeyboard.security.** { *; } to allow obfuscation
 
 # Firebase
 -keep class com.google.firebase.** { *; }
@@ -82,14 +82,6 @@
 # Giphy SDK
 -keep class com.giphy.sdk.** { *; }
 -dontwarn com.giphy.sdk.**
-
-# Compose
--keep class androidx.compose.** { *; }
--dontwarn androidx.compose.**
-
-# Coroutines
--keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
--keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
 
 # Serialization
 -keepattributes *Annotation*, InnerClasses
@@ -101,11 +93,6 @@
 
 # Remove logging in release
 -assumenosideeffects class android.util.Log {
-    public static *** d(...);
-    public static *** v(...);
-}
-
--assumenosideeffects class timber.log.Timber {
     public static *** d(...);
     public static *** v(...);
     public static *** i(...);

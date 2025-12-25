@@ -50,6 +50,8 @@ fun ClipboardItemChip(
         shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.secondaryContainer,
         modifier = Modifier.height(36.dp)
+        // Semantics are automatically handled by Surface(onClick) as Role.Button
+        // but we can enhance it with specific content description if needed.
     ) {
         androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
             Text(
