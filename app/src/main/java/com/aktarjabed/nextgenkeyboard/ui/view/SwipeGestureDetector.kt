@@ -36,6 +36,8 @@ fun Modifier.detectSwipeGesture(
                         if (activePointers.size < MAX_POINTERS) {
                             activePointers[change.id] = mutableListOf(change.position)
                             hasUpdates = true
+                            // Trigger immediate tap logic on down for responsiveness?
+                            // No, wait for up to distinguish swipe.
                         } else {
                             Timber.w("Max pointers reached ($MAX_POINTERS), ignoring new pointer")
                         }
@@ -53,6 +55,8 @@ fun Modifier.detectSwipeGesture(
                             }
                         }
                     }
+                    // IMPORTANT: Only consume if we are actively tracking it as a swipe/gesture
+                    // In a keyboard, we likely want to consume all touches to prevent underlying view interaction
                     if (change.pressed) {
                         change.consume()
                     }

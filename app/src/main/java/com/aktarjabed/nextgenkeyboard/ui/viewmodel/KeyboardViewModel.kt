@@ -6,6 +6,7 @@ import com.aktarjabed.nextgenkeyboard.data.repository.ClipboardRepository
 import com.aktarjabed.nextgenkeyboard.data.repository.PreferencesRepository
 import com.aktarjabed.nextgenkeyboard.feature.ai.AiContextManager
 import com.aktarjabed.nextgenkeyboard.feature.ai.SmartPredictionUseCase
+import com.aktarjabed.nextgenkeyboard.feature.suggestions.CompositeSuggestionProvider
 import com.aktarjabed.nextgenkeyboard.feature.gif.GiphyManager
 import com.giphy.sdk.core.models.Media
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,6 +35,7 @@ class KeyboardViewModel @Inject constructor(
     private val clipboardRepository: ClipboardRepository,
     private val preferencesRepository: PreferencesRepository,
     private val smartPredictionUseCase: SmartPredictionUseCase,
+    private val compositeSuggestionProvider: CompositeSuggestionProvider,
     private val aiContextManager: AiContextManager,
     private val giphyManager: GiphyManager
 ) : ViewModel() {
@@ -158,13 +160,20 @@ class KeyboardViewModel @Inject constructor(
         if (currentState.isPasswordField) return
 
         // Debounce predictions to avoid spamming API on every keystroke
-        // Using a 500ms delay to ensure we only query when the user pauses typing
+        // Using a 300ms delay (faster than before) as we now have hybrid engine
         predictionJob?.cancel()
         predictionJob = viewModelScope.launch {
-            delay(500) // Wait 500ms after last keystroke
+            delay(300)
 
+            // Extract current word for local engine
+            val currentWord = textBeforeCursor.takeLastWhile { !it.isWhitespace() }
             val context = aiContextManager.getContext(textBeforeCursor)
-            val predictions = smartPredictionUseCase.getPredictions(context)
+
+            val predictions = compositeSuggestionProvider.getMergedSuggestions(
+                currentWord = currentWord,
+                contextText = context,
+                languageCode = currentState.language
+            )
 
             // Ensure we are still in a valid state to update UI
             val freshState = _uiState.value as? KeyboardUiState.Ready

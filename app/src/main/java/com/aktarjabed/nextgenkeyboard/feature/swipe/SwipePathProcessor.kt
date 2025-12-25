@@ -49,6 +49,8 @@ class SwipePathProcessor @Inject constructor(
     }
 
     fun processPathToKeySequence(path: List<Offset>): String {
+        if (path.isEmpty()) return ""
+
         // Handle long paths gracefully by truncating or sampling
         val processingPath = if (path.size > MAX_PATH_LENGTH) {
             Timber.w("Path too long (${path.size}), truncating to $MAX_PATH_LENGTH")
@@ -63,8 +65,20 @@ class SwipePathProcessor @Inject constructor(
             return ""
         }
 
+        // Fix: Ensure the first point is always considered (anchor)
+        // filterByVelocity might drop it if velocity is low
         val filteredPath = filterByVelocity(validatedPath)
-        if (filteredPath.isEmpty()) return ""
+
+        // Ensure we at least have valid points
+        if (filteredPath.isEmpty() && validatedPath.isNotEmpty()) {
+             // Fallback to raw validated path if filtering removed everything
+             // (e.g. very slow intentional drag)
+             return validatedPath
+                .asSequence()
+                .mapNotNull { offset -> findKeyAt(offset) }
+                .distinctConsecutive()
+                .joinToString("")
+        }
 
         synchronized(lock) {
             return filteredPath
