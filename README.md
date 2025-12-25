@@ -12,7 +12,7 @@ A modern, production-ready Android keyboard application built with **Jetpack Com
 
 ## 🚧 Project Status
 
-**Current Phase:** Feature Complete (Ready for Release Candidate)
+**Current Version:** v1.0.0
 
 > ⚠️ **Note:** This project is open source. AI features require a Gemini API key.
 
@@ -25,14 +25,13 @@ A modern, production-ready Android keyboard application built with **Jetpack Com
 - [x] **GIF Keyboard**: Giphy integration
 - [x] **Accessibility**: TalkBack support optimized
 
-### 🚀 Roadmap
-- [ ] **Release**: Publish v1.0.0 on Play Store
+### 🚀 Roadmap (v1.1+)
 - [ ] **Sync**: Cloud dictionary sync (Firebase)
 - [ ] **Themes**: Community theme store
 
 ---
 
-## 🚀 What's New in Phase 3 (AI & Robustness)
+## 🚀 What's New in v1.0.0 (AI & Robustness)
 
 We have reached a major milestone in development with the completion of Phase 3. Key highlights include:
 
@@ -73,7 +72,7 @@ We have reached a major milestone in development with the completion of Phase 3.
 
 ### For Users
 
-1. Download the APK from the [Releases](https://github.com/aktarjabed/NextGenKeyboard/releases) page.
+1. Download the latest APK from the [**Releases Page**](https://github.com/aktarjabed/NextGenKeyboard/releases/latest).
 2. Enable installation from unknown sources in Android settings.
 3. Install the APK.
 4. Go to **Settings → System → Languages & Input → On-screen keyboard**.
