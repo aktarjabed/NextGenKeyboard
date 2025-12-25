@@ -100,6 +100,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     // Injected for ViewModel creation
     @Inject lateinit var smartPredictionUseCase: SmartPredictionUseCase
     @Inject lateinit var aiContextManager: AiContextManager
+    @Inject lateinit var compositeSuggestionProvider: com.aktarjabed.nextgenkeyboard.feature.suggestions.CompositeSuggestionProvider
 
     // ViewModel - Manually created using injected dependencies
     private lateinit var viewModel: KeyboardViewModel
@@ -163,6 +164,7 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
             clipboardRepository = clipboardRepository,
             preferencesRepository = preferencesRepository,
             smartPredictionUseCase = smartPredictionUseCase,
+            compositeSuggestionProvider = compositeSuggestionProvider,
             aiContextManager = aiContextManager,
             giphyManager = giphyManager
         )
