@@ -31,17 +31,6 @@ A modern, production-ready Android keyboard application built with **Jetpack Com
 
 ---
 
-## 🚀 What's New in v1.0.0 (AI & Robustness)
-
-We have reached a major milestone in development with the completion of Phase 3. Key highlights include:
-
-*   **🧠 Gemini AI Integration**: Context-aware next-word predictions powered by Google's **Gemini 1.5 Flash** model. The keyboard understands the nuance of your sentence to suggest the most relevant words.
-*   **⚡ True Multi-Touch Support**: A completely rewritten gesture detector that supports rapid two-thumb typing, key rollover, and shift-key combinations without dropped inputs.
-*   **🛡️ Robust Swipe Typing**: Optimized **O(1) Spatial Key Grid** algorithm that instantly maps swipe paths to keys, ensuring smooth performance even on low-end devices.
-*   **🔧 Advanced Autocorrect**: A hybrid engine combining instant common-typo lookup with Levenshtein distance calculations for smart, non-intrusive corrections.
-
----
-
 ## ✨ Features
 
 ### Core Experience
