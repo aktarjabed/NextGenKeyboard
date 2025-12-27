@@ -61,23 +61,23 @@ class CompositeSuggestionProvider @Inject constructor(
 
         // B. Add AI predictions (Next word / completion)
         aiSuggestions.forEach { aiSugg ->
-            if (aiSugg.isNotBlank() && !merged.contains(aiSugg, ignoreCase = true)) {
+            if (aiSugg.isNotBlank() && !containsIgnoreCase(merged, aiSugg)) {
                 merged.add(aiSugg)
             }
         }
 
         // C. Fill remaining slots with local suggestions (including the top one if it wasn't added in Step A)
         localDeferred.forEach { local ->
-            if (merged.size < 3 && !merged.contains(local.suggestion, ignoreCase = true)) {
+            if (merged.size < 3 && !containsIgnoreCase(merged, local.suggestion)) {
                 merged.add(local.suggestion)
             }
         }
 
-        // Helper: case-insensitive contains
-        fun MutableList<String>.contains(item: String, ignoreCase: Boolean): Boolean {
-            return this.any { it.equals(item, ignoreCase) }
-        }
-
         return@withContext merged.take(3)
+    }
+
+    // Helper: case-insensitive contains
+    private fun containsIgnoreCase(list: List<String>, item: String): Boolean {
+        return list.any { it.equals(item, ignoreCase = true) }
     }
 }
