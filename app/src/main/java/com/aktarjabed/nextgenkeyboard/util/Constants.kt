@@ -1,4 +1,4 @@
-package com.aktarjabed.nextgenkeyboard.utils
+package com.aktarjabed.nextgenkeyboard.util
 
 object Constants {
     // Database
