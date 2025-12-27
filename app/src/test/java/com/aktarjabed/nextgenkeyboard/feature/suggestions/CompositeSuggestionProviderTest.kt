@@ -35,7 +35,7 @@ class CompositeSuggestionProviderTest {
         // Mock AI
         coEvery { aiUseCase.getPredictions(any()) } returns listOf("apple", "banana")
 
-        val result = provider.getMergedSuggestions("teh", "context", "en")
+        val result = provider.getMergedSuggestions("teh", "context is long enough for ai", "en")
 
         // Expect "the" (local high conf) first, then AI suggestions
         assertThat(result).hasSize(3)
@@ -52,7 +52,7 @@ class CompositeSuggestionProviderTest {
         // Mock AI
         coEvery { aiUseCase.getPredictions(any()) } returns listOf("apple")
 
-        val result = provider.getMergedSuggestions("wro", "context", "en")
+        val result = provider.getMergedSuggestions("wro", "context is long enough for ai", "en")
 
         // It should NOT be skipped
         assertThat(result).contains("word")
@@ -68,7 +68,7 @@ class CompositeSuggestionProviderTest {
         // Mock AI (Empty or Error)
         coEvery { aiUseCase.getPredictions(any()) } returns emptyList()
 
-        val result = provider.getMergedSuggestions("helo", "context", "en")
+        val result = provider.getMergedSuggestions("helo", "context is long enough for ai", "en")
 
         // Should return only local suggestions
         assertThat(result).contains("hello")
@@ -84,7 +84,7 @@ class CompositeSuggestionProviderTest {
         // Mock AI returning "hello" (duplicate) and "world"
         coEvery { aiUseCase.getPredictions(any()) } returns listOf("hello", "world")
 
-        val result = provider.getMergedSuggestions("hell", "context", "en")
+        val result = provider.getMergedSuggestions("hell", "context is long enough for ai", "en")
 
         // "hello" should appear only once
         assertThat(result).containsNoDuplicates()
