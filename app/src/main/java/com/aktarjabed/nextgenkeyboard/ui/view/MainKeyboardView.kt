@@ -42,8 +42,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
 import com.aktarjabed.nextgenkeyboard.data.model.Clip
 import com.aktarjabed.nextgenkeyboard.data.model.Language
 import com.aktarjabed.nextgenkeyboard.feature.keyboard.UtilityKey
@@ -72,7 +77,9 @@ fun MainKeyboardView(
     onClipboardClick: () -> Unit = {},
     onEmojiClick: () -> Unit = {},
     recentClips: List<Clip> = emptyList(),
-    onClipSelected: (String) -> Unit = {}
+    onClipSelected: (String) -> Unit = {},
+    keyboardMode: String = "NORMAL", // "NORMAL", "ONE_HANDED_LEFT", "ONE_HANDED_RIGHT", "FLOATING"
+    keyboardScale: Float = 1.0f // 1.0 = 100%
 ) {
     val layoutDirection = if (language.isRTL) LayoutDirection.Rtl else LayoutDirection.Ltr
     var showClipboard by remember { mutableStateOf(false) }
@@ -80,6 +87,9 @@ fun MainKeyboardView(
     // State to track the keyboard's global position offset
     var keyboardRootOffset by remember { mutableStateOf(Offset.Zero) }
     var lastTapTime by remember { mutableStateOf(0L) }
+
+    // Floating mode offset
+    var floatingOffset by remember { mutableStateOf(Offset.Zero) }
 
     // Swipe Trail State
     var currentSwipePath by remember { mutableStateOf(emptyList<Offset>()) }
@@ -96,16 +106,48 @@ fun MainKeyboardView(
     }
 
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
-        Column(
+        // Root container logic for modes
+        val rootModifier = when (keyboardMode) {
+            "ONE_HANDED_LEFT" -> Modifier.fillMaxWidth(0.8f) // 80% width aligned left (via parent gravity or padding)
+            "ONE_HANDED_RIGHT" -> Modifier.fillMaxWidth(0.8f) // Alignment handled by parent Box contentAlignment
+            "FLOATING" -> Modifier
+                .fillMaxWidth(0.75f)
+                .offset { androidx.compose.ui.unit.IntOffset(floatingOffset.x.toInt(), floatingOffset.y.toInt()) }
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        val newOffset = floatingOffset + dragAmount
+                        // Simple bounds check (soft limit to keep at least partially on screen)
+                        // A more robust check requires BoxWithConstraints
+                        if (newOffset.y <= 0 && newOffset.y > -1500) { // Only allow dragging up
+                             floatingOffset = newOffset
+                        }
+                    }
+                }
+            else -> Modifier.fillMaxWidth()
+        }
+
+        // Parent Box to handle alignments and floating bounds
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(theme.backgroundColor) // Apply Theme Background
+                .background(Color.Transparent), // Transparent root
+            contentAlignment = when (keyboardMode) {
+                "ONE_HANDED_LEFT" -> Alignment.BottomStart
+                "ONE_HANDED_RIGHT" -> Alignment.BottomEnd
+                else -> Alignment.BottomCenter
+            }
         ) {
-            // Top action bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
+            Column(
+                modifier = rootModifier
+                    .background(theme.backgroundColor) // Apply Theme Background
+                    .heightIn(max = (300 * keyboardScale).dp) // Approximate dynamic height
+            ) {
+                // Top action bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Apply theme colors to icons
