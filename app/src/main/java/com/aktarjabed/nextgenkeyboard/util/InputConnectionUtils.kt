@@ -60,3 +60,23 @@ fun InputConnection?.safeGetSelectedText(flags: Int): CharSequence? {
         null
     }
 }
+
+fun InputConnection?.safeSetComposingText(text: CharSequence, newCursorPosition: Int): Boolean {
+    if (this == null) return false
+    return try {
+        setComposingText(text, newCursorPosition)
+    } catch (e: Exception) {
+        Timber.e(e, "Failed to set composing text")
+        false
+    }
+}
+
+fun InputConnection?.safeFinishComposingText(): Boolean {
+    if (this == null) return false
+    return try {
+        finishComposingText()
+    } catch (e: Exception) {
+        Timber.e(e, "Failed to finish composing text")
+        false
+    }
+}
