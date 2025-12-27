@@ -48,6 +48,8 @@ class PreferencesRepository @Inject constructor(
         private val HAPTIC_FEEDBACK_ENABLED = booleanPreferencesKey("haptic_feedback_enabled")
         private val SWIPE_TYPING_ENABLED = booleanPreferencesKey("swipe_typing_enabled")
         private val AUTOCORRECT_ENABLED = booleanPreferencesKey("autocorrect_enabled")
+        private val KEYBOARD_MODE = stringPreferencesKey("keyboard_mode")
+        private val KEYBOARD_HEIGHT_SCALE = androidx.datastore.preferences.core.floatPreferencesKey("keyboard_height_scale")
         private val RECENT_EMOJIS = stringPreferencesKey("recent_emojis")
 
         // Privacy & Clipboard Keys
@@ -73,6 +75,20 @@ class PreferencesRepository @Inject constructor(
     val isHapticFeedbackEnabled: Flow<Boolean> = dataStore.data.map { it[HAPTIC_FEEDBACK_ENABLED] ?: true }
     val isSwipeTypingEnabled: Flow<Boolean> = dataStore.data.map { it[SWIPE_TYPING_ENABLED] ?: true }
     val isAutocorrectEnabled: Flow<Boolean> = dataStore.data.map { it[AUTOCORRECT_ENABLED] ?: true }
+
+    // Default mode: NORMAL. Options: NORMAL, ONE_HANDED_LEFT, ONE_HANDED_RIGHT, FLOATING
+    val keyboardMode: Flow<String> = dataStore.data.map { it[KEYBOARD_MODE] ?: "NORMAL" }
+
+    // Default scale: 1.0f (100%)
+    val keyboardHeightScale: Flow<Float> = dataStore.data.map { it[KEYBOARD_HEIGHT_SCALE] ?: 1.0f }
+
+    suspend fun setKeyboardMode(mode: String) {
+        safeEdit(KEYBOARD_MODE, mode, "Keyboard Mode")
+    }
+
+    suspend fun setKeyboardHeightScale(scale: Float) {
+        safeEdit(KEYBOARD_HEIGHT_SCALE, scale, "Keyboard Height Scale")
+    }
 
     // ================== EMOJI PREFERENCES ==================
     val recentEmojis: Flow<List<String>> = dataStore.data.map { prefs ->

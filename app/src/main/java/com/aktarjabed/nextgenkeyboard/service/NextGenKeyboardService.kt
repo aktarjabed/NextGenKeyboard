@@ -358,6 +358,10 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
         // Observe clipboard history
         val recentClips by clipboardRepository.getRecentClips().collectAsState(initial = emptyList())
 
+        // Observe UI modes
+        val keyboardMode by preferencesRepository.keyboardMode.collectAsState(initial = "NORMAL")
+        val keyboardScale by preferencesRepository.keyboardHeightScale.collectAsState(initial = 1.0f)
+
         // Handle voice input results
         LaunchedEffect(voiceState) {
             if (voiceState is VoiceInputState.Result) {
@@ -412,7 +416,9 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                     recentClips = recentClips, // Pass real clipboard history
                     onClipSelected = { clipContent ->
                         commitText(clipContent)
-                    }
+                    },
+                    keyboardMode = keyboardMode,
+                    keyboardScale = keyboardScale
                 )
             }
 
@@ -548,7 +554,8 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
 
         // Handle all key events sequentially in the coroutine scope to prevent race conditions
         // between synchronous Special Keys (Space/Enter) and asynchronous Character Keys.
-        serviceScope.launch {
+        // Use Main dispatcher to ensure thread safety for currentComposingText (StringBuilder)
+        serviceScope.launch(Dispatchers.Main) {
             try {
                 when (text) {
                     "⌫" -> {
@@ -696,12 +703,12 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                 return
             }
 
-            // Always clear composing state when committing external text
+            // Clear internal buffer, but let commitText replace the composing region natively
             if (currentComposingText.isNotEmpty()) {
                 currentComposingText.clear()
-                currentInputConnection.safeFinishComposingText()
             }
 
+            // safeCommitText will replace the active composing region with 'text'
             val success = currentInputConnection.safeCommitText(text, 1)
             if (success) {
                 viewModel.onTextCommitted(text)

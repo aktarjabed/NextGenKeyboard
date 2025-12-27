@@ -65,16 +65,25 @@ class AdvancedAutocorrectEngine @Inject constructor(
      */
     private suspend fun loadDictionaries() = withContext(Dispatchers.IO) {
         try {
-            // Load English dictionary
-            val enDict = loadDictionaryFromRes(R.raw.en_dict)
-            if (enDict.isNotEmpty()) {
-                dictionaries["en"] = enDict
-            } else {
-                dictionaries["en"] = loadFallbackDictionary()
+            // Load dictionaries for supported languages
+            val languages = mapOf(
+                "en" to R.raw.en_dict,
+                "es" to R.raw.es_dict,
+                "fr" to R.raw.fr_dict,
+                "de" to R.raw.de_dict
+            )
+
+            languages.forEach { (code, resId) ->
+                val dict = loadDictionaryFromRes(resId)
+                if (dict.isNotEmpty()) {
+                    dictionaries[code] = dict
+                }
             }
 
-            // Placeholder for other languages (files not guaranteed to exist yet)
-            // dictionaries["es"] = loadDictionaryFromRes(R.raw.es_dict)
+            // Ensure English fallback exists
+            if (dictionaries["en"] == null) {
+                dictionaries["en"] = loadFallbackDictionary()
+            }
 
             Timber.d("✅ Loaded dictionaries for: ${dictionaries.keys}")
         } catch (e: Exception) {
