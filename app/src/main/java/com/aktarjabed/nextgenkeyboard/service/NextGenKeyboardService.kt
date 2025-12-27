@@ -55,9 +55,11 @@ import com.aktarjabed.nextgenkeyboard.util.logInfo
 import com.aktarjabed.nextgenkeyboard.util.logWarning
 import com.aktarjabed.nextgenkeyboard.util.safeCommitText
 import com.aktarjabed.nextgenkeyboard.util.safeDeleteSurroundingText
+import com.aktarjabed.nextgenkeyboard.util.safeFinishComposingText
 import com.aktarjabed.nextgenkeyboard.util.safeGetSelectedText
 import com.aktarjabed.nextgenkeyboard.util.safePerformContextMenuAction
 import com.aktarjabed.nextgenkeyboard.util.safeSendKeyEvent
+import com.aktarjabed.nextgenkeyboard.util.safeSetComposingText
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -132,6 +134,9 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
     // State flags
     private var isPasswordMode = false
     private var currentPackageName: String? = null
+
+    // Composing text state
+    private val currentComposingText = StringBuilder()
 
     override fun onCreate() {
         super.onCreate()
@@ -268,11 +273,41 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
             isPasswordMode = false
             currentPackageName = null
 
+            // Clear composing text on finish
+            currentComposingText.clear()
+
             // Clear security flags
             window?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
             Timber.d("Input session finished - Security reset")
         } catch (e: Exception) {
             Timber.e(e, "Error in onFinishInput")
+        }
+    }
+
+    override fun onUpdateSelection(
+        oldSelStart: Int,
+        oldSelEnd: Int,
+        newSelStart: Int,
+        newSelEnd: Int,
+        candidatesStart: Int,
+        candidatesEnd: Int
+    ) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+
+        // If the selection moved and we have composing text, verify if we need to commit.
+        // This is a simplified check: if the cursor moved outside the expected range, commit everything.
+        // A robust implementation would check if the movement was caused by our own setComposingText.
+
+        if (currentComposingText.isNotEmpty()) {
+             // Check if the cursor is at the expected end of the composing text
+             // We can use candidatesEnd as a proxy for where the composing text ends
+
+             if (candidatesEnd != -1 && (newSelStart != candidatesEnd || newSelEnd != candidatesEnd)) {
+                 // The user moved the cursor manually (or another app did).
+                 // We should commit our internal state to prevent desync.
+                 Timber.d("Cursor moved outside composing region. Committing buffer.")
+                 commitCurrentComposingText()
+             }
         }
     }
 
@@ -511,76 +546,86 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
             return
         }
 
-        try {
-            when (text) {
-                "⌫" -> {
-                    handleBackspace()
-                    return
-                }
-                "↵" -> {
-                    handleEnter()
-                    return
-                }
-                "SPACE" -> {
-                    commitText(" ")
-                    return
-                }
-            }
+        // Handle all key events sequentially in the coroutine scope to prevent race conditions
+        // between synchronous Special Keys (Space/Enter) and asynchronous Character Keys.
+        serviceScope.launch {
+            try {
+                when (text) {
+                    "⌫" -> {
+                        handleBackspace()
+                    }
+                    "↵" -> {
+                        commitCurrentComposingText()
+                        handleEnter()
+                    }
+                    "SPACE" -> {
+                        commitCurrentComposingText()
+                        commitText(" ")
+                    }
+                    else -> {
+                        // Validate input connection
+                        if (currentInputConnection != null) {
+                            if (isPasswordMode) {
+                                // In password mode, commit directly without composing text
+                                commitText(text)
+                            } else {
+                                // Append to composing buffer
+                                currentComposingText.append(text)
 
-            serviceScope.launch {
+                                // Set composing text to show underline
+                                currentInputConnection.safeSetComposingText(currentComposingText.toString(), 1)
+
+                                // Update predictions based on composing text
+                                viewModel.onTextChanged(currentComposingText.toString())
+                            }
+                        } else {
+                            Timber.w("No input connection available")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                logError("Error processing key press in coroutine", e)
+                // Fallback: try to commit original text
                 try {
-                    // Validate input connection
-                    if (currentInputConnection == null) {
-                        Timber.w("No input connection available")
-                        return@launch
-                    }
-
-                    // Process through autocorrect if enabled and ready
-                    val processedText = if (!isPasswordMode && autocorrectEngine.isReady()) {
-                        try {
-                            autocorrectEngine.processInput(text)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error in autocorrect processing")
-                            text // Fallback to original
-                        }
-                    } else {
-                        text
-                    }
-
-                    commitText(processedText)
-
-                    // Learn word if not in password mode
-                    if (!isPasswordMode && processedText.isNotBlank()) {
-                        try {
-                            autocorrectEngine.learnWord(processedText)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Error learning word")
-                        }
-                    }
-
-                    // Trigger prediction update after key press
-                    try {
-                        val textBeforeCursor = currentInputConnection?.getTextBeforeCursor(100, 0)?.toString()
-                        if (!textBeforeCursor.isNullOrBlank()) {
-                            viewModel.onTextChanged(textBeforeCursor)
-                        }
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error updating predictions")
-                    }
-
-                } catch (e: Exception) {
-                    logError("Error processing key press in coroutine", e)
-                    // Fallback: try to commit original text
-                    try {
-                        Timber.w("Fallback: Committing raw text for '$text'")
-                        commitText(text)
-                    } catch (commitError: Exception) {
-                        Timber.e(commitError, "Failed to commit fallback text")
-                    }
+                    Timber.w("Fallback: Committing raw text for '$text'")
+                    commitText(text)
+                } catch (commitError: Exception) {
+                    Timber.e(commitError, "Failed to commit fallback text")
                 }
             }
-        } catch (e: Exception) {
-            logError("Critical error in handleKeyPress", e)
+        }
+    }
+
+    private fun commitCurrentComposingText() {
+        if (currentComposingText.isNotEmpty()) {
+            val textToCommit = currentComposingText.toString()
+
+            // Clear buffer immediately to prevent double-commit logic in commitText
+            currentComposingText.clear()
+
+            // Process through autocorrect before committing
+            val processedText = if (!isPasswordMode && autocorrectEngine.isReady()) {
+                try {
+                    autocorrectEngine.processInput(textToCommit)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error in autocorrect processing")
+                    textToCommit
+                }
+            } else {
+                textToCommit
+            }
+
+            // This commit will automatically replace the active composing region
+            commitText(processedText)
+
+            // Learn the word
+            if (!isPasswordMode && processedText.isNotBlank()) {
+                try {
+                    autocorrectEngine.learnWord(processedText)
+                } catch (e: Exception) {
+                    Timber.e(e, "Error learning word")
+                }
+            }
         }
     }
 
@@ -590,7 +635,33 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
                 Timber.w("No input connection for backspace")
                 return
             }
-            currentInputConnection.safeDeleteSurroundingText(1, 0)
+
+            if (currentComposingText.isNotEmpty()) {
+                // Delete last character from composing text
+                currentComposingText.deleteCharAt(currentComposingText.length - 1)
+
+                if (currentComposingText.isEmpty()) {
+                    currentInputConnection.safeSetComposingText("", 0) // Clear composing region
+                    currentInputConnection.safeFinishComposingText()
+                    viewModel.onTextChanged("") // Clear suggestions
+                } else {
+                    currentInputConnection.safeSetComposingText(currentComposingText.toString(), 1)
+                    viewModel.onTextChanged(currentComposingText.toString())
+                }
+            } else {
+                // Fallback to deleting surrounding text if no composing text
+                currentInputConnection.safeDeleteSurroundingText(1, 0)
+
+                // Update predictions based on new context
+                try {
+                    val textBeforeCursor = currentInputConnection?.getTextBeforeCursor(100, 0)?.toString()
+                    if (!textBeforeCursor.isNullOrBlank()) {
+                        viewModel.onTextChanged(textBeforeCursor)
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error updating predictions after backspace")
+                }
+            }
         } catch (e: Exception) {
             Timber.e(e, "Error handling backspace")
         }
@@ -623,6 +694,12 @@ class NextGenKeyboardService : InputMethodService(), ViewModelStoreOwner, SavedS
             if (currentInputConnection == null) {
                 Timber.w("No input connection for commit")
                 return
+            }
+
+            // Always clear composing state when committing external text
+            if (currentComposingText.isNotEmpty()) {
+                currentComposingText.clear()
+                currentInputConnection.safeFinishComposingText()
             }
 
             val success = currentInputConnection.safeCommitText(text, 1)
