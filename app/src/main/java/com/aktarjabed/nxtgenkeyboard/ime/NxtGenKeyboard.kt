@@ -98,6 +98,8 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     }
 
+    private var sessionToken: String? = null
+
     private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
         if (!sensitiveEditor && prefs.clipboardHistoryEnabled) saveClipboard()
     }
@@ -160,6 +162,8 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
             emojiStrip.addView(TextView(this).apply {
                 text = emoji
                 textSize = 26f
+                minimumHeight = dp(48)
+                minimumWidth = dp(48)
                 setPadding(pad, pad / 2, pad, pad / 2)
                 setOnClickListener { safeCommitText(emoji) }
             })
@@ -177,6 +181,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         numericEditor = attribute?.let(::isNumericInput) == true
         phoneEditor = attribute?.let(::isPhoneInput) == true
         noSuggestions = attribute?.let(::hasNoSuggestions) == true
+        sessionToken = java.util.UUID.randomUUID().toString()
 
         if (!::keyboardView.isInitialized) return
 
@@ -310,6 +315,9 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         if (!::emojiPanel.isInitialized) return
         emojiPanel.visibility = if (show) View.VISIBLE else View.GONE
         keyboardView.visibility = if (show) View.GONE else View.VISIBLE
+
+        val scroller = candidateBar.parent as? View
+        scroller?.visibility = if (show) View.GONE else View.VISIBLE
         if (show) clearCandidates()
     }
 
@@ -454,23 +462,26 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
             return
         }
         flushTransliteration()
+        val token = sessionToken ?: return
         startActivity(
             Intent(this, ClipboardHistoryActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 .putExtra(ClipboardHistoryActivity.EXTRA_FROM_IME, true)
+                .putExtra(ClipboardHistoryActivity.EXTRA_SESSION_TOKEN, token)
         )
     }
 
     private fun deliverPendingInsert() {
         if (currentInputConnection == null) return
-        val pending = ClipboardInsertBus.peek() ?: return
+        val token = sessionToken ?: return
+        val pending = ClipboardInsertBus.peek(token) ?: return
         var success = false
         try {
             success = currentInputConnection?.commitText(pending, 1) ?: false
         } catch (e: Exception) {
         }
         if (success) {
-            ClipboardInsertBus.consume()
+            ClipboardInsertBus.consume(token)
         } else {
             // if we couldn't commit, we leave it pending for later
         }
@@ -609,8 +620,8 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         val snapshot = before + after
         val cursor = before.length
         issues.take(8).forEach { issue ->
-            val start = snapshot.offsetByCodePoints(0, issue.start)
-            val end = snapshot.offsetByCodePoints(start, issue.length)
+            val start = issue.start
+            val end = start + issue.length
             val fixable = end <= cursor
             val label = if (issue.replacements.isNotEmpty()) {
                 "${issue.message} → ${issue.replacements.first()}"
@@ -634,8 +645,8 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
             clearCandidates()
             return
         }
-        val start = currentSnapshot.offsetByCodePoints(0, issue.start)
-        val end = currentSnapshot.offsetByCodePoints(start, issue.length)
+        val start = issue.start
+        val end = start + issue.length
         val cursor = currentBefore.length
         val replacement = issue.replacements.firstOrNull() ?: return
         val snapshot = grammarSnapshot ?: return
@@ -660,6 +671,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         val padV = dp(4)
         val tv = TextView(this).apply {
             this.text = text
+            minimumHeight = dp(48)
             setTextColor(if (clickable) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt())
             setPadding(padH, padV, padH, padV)
             textSize = 15f

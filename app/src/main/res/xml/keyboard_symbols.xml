@@ -52,7 +52,7 @@
         <Key android:codes="46" android:keyLabel="." android:keyWidth="8%p" />
         <Key android:codes="-106" android:keyLabel="😀" android:keyWidth="9%p" />
         <Key android:codes="-103" android:keyLabel="⏎" android:keyWidth="10%p" />
-        <Key android:codes="-5" android:keyLabel="⌫" android:keyWidth="12%p" android:keyEdgeFlags="right" />
+        <Key android:codes="-5" android:isRepeatable="true" android:keyLabel="⌫" android:keyWidth="12%p" android:keyEdgeFlags="right" />
     </Row>
 
 </Keyboard>

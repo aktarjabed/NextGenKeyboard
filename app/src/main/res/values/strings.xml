@@ -9,6 +9,7 @@
     <string name="online_grammar">Allow online grammar check</string>
     <string name="online_grammar_warning">When enabled, text selected for grammar checking is sent over HTTPS to the configured LanguageTool service. Do not enable this if that is unsuitable for your privacy requirements.</string>
     <string name="clipboard_history">Enable clipboard history</string>
+    <string name="clipboard_empty">No clipboard history\nCopied items will appear here when Clipboard History is enabled.</string>
     <string name="clipboard_warning">Clipboard history stores copied text locally. It can contain passwords, OTPs, tokens, banking information, and other sensitive data. Enable this only when you understand the risk.</string>
     <string name="autocorrect">Autocorrect on space</string>
     <string name="auto_capitalization">Auto-capitalization</string>
