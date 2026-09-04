@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NxtGenKeyboard</string>
+    <string name="settings_title">NxtGenKeyboard Settings</string>
+    <string name="privacy_summary">Clipboard history is opt-in. Online grammar is opt-in and sends checked text to LanguageTool. Secure/password fields disable learning, grammar, suggestions, transliteration, and clipboard capture. Backup is disabled because local data may contain sensitive clipboard history.</string>
+    <string name="subtype_en">English</string>
+    <string name="subtype_hi">Hindi</string>
+    <string name="subtype_bn">Bengali</string>
+    <string name="online_grammar">Allow online grammar check</string>
+    <string name="online_grammar_warning">When enabled, text selected for grammar checking is sent over HTTPS to the configured LanguageTool service. Do not enable this if that is unsuitable for your privacy requirements.</string>
+    <string name="clipboard_history">Enable clipboard history</string>
+    <string name="clipboard_warning">Clipboard history stores copied text locally. It can contain passwords, OTPs, tokens, banking information, and other sensitive data. Enable this only when you understand the risk.</string>
+    <string name="autocorrect">Autocorrect on space</string>
+    <string name="auto_capitalization">Auto-capitalization</string>
+    <string name="learn_new_words">Learn new words (after typing twice)</string>
+    <string name="key_sound">Key press sound</string>
+    <string name="key_vibration">Key press vibration</string>
+    <string name="open_keyboard_settings">Open keyboard settings</string>
+    <string name="open_clipboard_history">Open clipboard history</string>
+    <string name="enable">Enable</string>
+    <string name="cancel">Cancel</string>
+    <string name="copy">Copy</string>
+    <string name="clipboard_item">Clipboard item</string>
+    <string name="copied_to_clipboard">Copied to clipboard</string>
+    <string name="pin">Pin</string>
+    <string name="unpin">Unpin</string>
+    <string name="delete">Delete</string>
+    <string name="clear_unpinned">Clear unpinned</string>
+    <string name="clear_all">Clear all</string>
+    <string name="clear_all_confirmation">Delete all clipboard history? This cannot be undone.</string>
+    <string name="no_grammar_issues">No grammar issues found</string>
+    <string name="text_changed_recheck">Text changed - please recheck</string>
+    <string name="clipboard_disabled_for_field">Clipboard history is disabled in this field</string>
+    <string name="language_changed">Language: %1$s</string>
+    <string name="back_to_letters">ABC</string>
+</resources>

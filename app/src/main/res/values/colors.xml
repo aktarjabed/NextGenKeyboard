@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="key_bg">#2A2A2A</color>
+    <color name="key_bg_pressed">#444444</color>
+    <color name="key_text">#FFFFFF</color>
+    <color name="keyboard_bg">#121212</color>
+    <color name="preview_bg">#333333</color>
+    <color name="preview_text">#FFFFFF</color>
+    <color name="ic_launcher_bg">#1E88E5</color>
+</resources>
