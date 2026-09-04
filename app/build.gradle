@@ -1,0 +1,84 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "kotlin-kapt"
+}
+
+android {
+    namespace "com.aktarjabed.nxtgenkeyboard"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.aktarjabed.nxtgenkeyboard"
+        minSdk 31
+        targetSdk 36
+        versionCode 10
+        versionName "0.6.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+
+    lint {
+        // Personal build: don't fail the build on lint findings.
+        abortOnError = false
+    }
+
+    sourceSets {
+        androidTest.assets.srcDirs += files("$projectDir/schemas")
+    }
+}
+
+kapt {
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
+}
+
+dependencies {
+    implementation "androidx.core:core-ktx:1.13.1"
+    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.2"
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.8.2"
+
+    implementation "androidx.room:room-runtime:2.6.1"
+    implementation "androidx.room:room-ktx:2.6.1"
+    kapt "androidx.room:room-compiler:2.6.1"
+
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"
+
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "androidx.room:room-testing:2.6.1"
+    testImplementation "org.robolectric:robolectric:4.12.2"
+    testImplementation "androidx.test:core-ktx:1.5.0"
+
+    androidTestImplementation "androidx.test.ext:junit:1.2.1"
+    androidTestImplementation "androidx.test.espresso:espresso-core:3.6.1"
+    androidTestImplementation "androidx.room:room-testing:2.6.1"
+}
