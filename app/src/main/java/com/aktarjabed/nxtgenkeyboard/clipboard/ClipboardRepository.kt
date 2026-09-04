@@ -10,14 +10,18 @@ class ClipboardRepository(private val dao: ClipboardDao) {
         val cleaned = text.trim()
         if (cleaned.isEmpty()) return
 
-        val existingId = dao.findIdByText(cleaned)
-        if (existingId != null) {
-            dao.touch(existingId, System.currentTimeMillis())
-        } else {
-            dao.insert(ClipboardEntity(text = cleaned))
+        try {
+            val existingId = dao.findIdByText(cleaned)
+            if (existingId != null) {
+                dao.touch(existingId, System.currentTimeMillis())
+            } else {
+                dao.insert(ClipboardEntity(text = cleaned))
+            }
+            // Enforce retention policy
+            dao.trimHistory()
+        } catch (e: Exception) {
+            android.util.Log.e("NxtGenIME", "Failed to add/update clipboard history", e)
         }
-        // Enforce retention policy
-        dao.trimHistory()
     }
 
     suspend fun delete(item: ClipboardEntity) {

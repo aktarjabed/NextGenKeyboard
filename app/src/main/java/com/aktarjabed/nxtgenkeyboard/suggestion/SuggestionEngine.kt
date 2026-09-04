@@ -26,8 +26,9 @@ class SuggestionEngine(private val context: Context) {
                         .forEach(words::add)
                 }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Empty dictionary is a valid degraded state.
+            android.util.Log.e("NxtGenIME", "Failed to load dictionary asset for lang: $lang", e)
         }
         dictionaries.getOrPut(lang) { ConcurrentHashMap.newKeySet() }.addAll(words)
     }
