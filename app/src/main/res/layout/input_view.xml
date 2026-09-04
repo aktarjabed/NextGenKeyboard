@@ -55,6 +55,7 @@
                 android:layout_weight="1"
                 android:gravity="center"
                 android:text="@string/back_to_letters"
+                android:contentDescription="@string/desc_btn_emoji_abc"
                 android:textColor="@color/key_text"
                 android:textSize="16sp" />
 
@@ -67,6 +68,7 @@
                 android:background="@drawable/key_bg"
                 android:gravity="center"
                 android:text="⌫"
+                android:contentDescription="@string/desc_btn_emoji_delete"
                 android:textColor="@color/key_text"
                 android:textSize="18sp" />
 
