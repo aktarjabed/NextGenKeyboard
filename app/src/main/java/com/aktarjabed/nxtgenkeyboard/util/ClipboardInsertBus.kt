@@ -9,6 +9,10 @@ object ClipboardInsertBus {
         pending = text
     }
 
+    fun peek(): String? {
+        return pending
+    }
+
     fun consume(): String? {
         val value = pending ?: return null
         pending = null

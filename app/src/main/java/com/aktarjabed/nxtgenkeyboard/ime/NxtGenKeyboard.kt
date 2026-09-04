@@ -178,6 +178,8 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         phoneEditor = attribute?.let(::isPhoneInput) == true
         noSuggestions = attribute?.let(::hasNoSuggestions) == true
 
+        if (!::keyboardView.isInitialized) return
+
         // Synchronize language with system-selected subtype, fallback to prefs
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         val currentSubtype = imm.currentInputMethodSubtype
@@ -336,7 +338,8 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
 
         val rawChar = try {
             String(Character.toChars(code))
-        } catch (_: IllegalArgumentException) {
+        } catch (e: IllegalArgumentException) {
+            android.util.Log.e("NxtGenIME", "Invalid key code: $code", e)
             return
         }
         val isLetter = rawChar.any(Char::isLetter)
@@ -409,7 +412,9 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
             }
             return
         }
-        safeDeleteSurroundingText(1, 0)
+        val before = safeGetTextBeforeCursor(2)
+        val deleteCount = if (before != null && before.length == 2 && Character.isSurrogatePair(before[0], before[1])) 2 else 1
+        safeDeleteSurroundingText(deleteCount, 0)
         if (!sensitiveEditor && !noSuggestions) afterWordMaybe()
     }
 
@@ -458,8 +463,17 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
 
     private fun deliverPendingInsert() {
         if (currentInputConnection == null) return
-        val pending = ClipboardInsertBus.consume() ?: return
-        safeCommitText(pending)
+        val pending = ClipboardInsertBus.peek() ?: return
+        var success = false
+        try {
+            success = currentInputConnection?.commitText(pending, 1) ?: false
+        } catch (e: Exception) {
+        }
+        if (success) {
+            ClipboardInsertBus.consume()
+        } else {
+            // if we couldn't commit, we leave it pending for later
+        }
         clearCandidates()
     }
 
@@ -475,7 +489,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         if (usable) {
             try {
                 currentInputConnection?.performEditorAction(action)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 safeCommitText("\n")
             }
         } else {
@@ -546,9 +560,12 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     private fun replaceLastWord(oldWord: String, newWord: String) {
         val before = safeGetTextBeforeCursor(oldWord.length + 10) ?: return
         val match = Regex("""(\p{L}+)([^\p{L}]*)$""").find(before)
-        val trailing = match?.groupValues?.get(2) ?: ""
-        safeDeleteSurroundingText(oldWord.length + trailing.length, 0)
-        safeCommitText(newWord + trailing)
+        if (match != null) {
+            val matchedWord = match.groupValues[1]
+            val trailing = match.groupValues[2]
+            safeDeleteSurroundingText(matchedWord.length + trailing.length, 0)
+            safeCommitText(newWord + trailing)
+        }
         clearCandidates()
     }
 
@@ -571,7 +588,8 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
                 if (prefs.useOnlineGrammar && isNetworkAvailable()) {
                     try {
                         onlineGrammar.check(text, currentLang())
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        android.util.Log.d("NxtGenIME", "Online grammar failed, falling back to offline", e)
                         offlineGrammar.check(text)
                     }
                 } else {
@@ -588,9 +606,12 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
             addCandidate(getString(R.string.no_grammar_issues), false) {}
             return
         }
+        val snapshot = before + after
         val cursor = before.length
         issues.take(8).forEach { issue ->
-            val fixable = issue.start + issue.length <= cursor
+            val start = snapshot.offsetByCodePoints(0, issue.start)
+            val end = snapshot.offsetByCodePoints(start, issue.length)
+            val fixable = end <= cursor
             val label = if (issue.replacements.isNotEmpty()) {
                 "${issue.message} → ${issue.replacements.first()}"
             } else {
@@ -605,19 +626,22 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     }
 
     private fun applyGrammarFix(issue: GrammarIssue, before: String, after: String) {
-        if (grammarSnapshot != before + after) {
+        val currentBefore = safeGetTextBeforeCursor(1000) ?: ""
+        val currentAfter = safeGetTextAfterCursor(1000) ?: ""
+        val currentSnapshot = currentBefore + currentAfter
+        if (grammarSnapshot != currentSnapshot) {
             Toast.makeText(this, R.string.text_changed_recheck, Toast.LENGTH_SHORT).show()
             clearCandidates()
             return
         }
-        val start = issue.start
-        val end = issue.start + issue.length
-        val cursor = before.length
+        val start = currentSnapshot.offsetByCodePoints(0, issue.start)
+        val end = currentSnapshot.offsetByCodePoints(start, issue.length)
+        val cursor = currentBefore.length
         val replacement = issue.replacements.firstOrNull() ?: return
         val snapshot = grammarSnapshot ?: return
         if (start < 0 || end < start || end > cursor || end > snapshot.length) return
 
-        val middle = before.substring(end, cursor)
+        val middle = currentBefore.substring(end, cursor)
         val connection = currentInputConnection ?: return
         connection.beginBatchEdit()
         try {
@@ -658,7 +682,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         if (clip.itemCount <= 0) return
         val text = try {
             clip.getItemAt(0).coerceToText(this).toString().trim()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             return
         }
         if (text.isEmpty()) return
@@ -679,7 +703,8 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         if (!clipboardRegistered) return
         try {
             clipboardManager.removePrimaryClipChangedListener(clipboardListener)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("NxtGenIME", "Failed to unregister clipboard listener", e)
         }
         clipboardRegistered = false
     }
