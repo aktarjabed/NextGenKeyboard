@@ -218,7 +218,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         updateKeyLabels()
         clearCandidates()
         registerClipboardListenerIfAllowed()
-        ClipboardInsertBus.registerListener { deliverPendingInsert() }
+        ClipboardInsertBus.registerListener(sessionToken!!) { deliverPendingInsert() }
         deliverPendingInsert()
     }
 
@@ -232,7 +232,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         grammarSnapshot = null
         flushTransliteration()
         unregisterClipboardListener()
-        ClipboardInsertBus.unregisterListener()
+        sessionToken?.let { ClipboardInsertBus.unregisterListener(it) }
         super.onFinishInputView(finishingInput)
     }
 
@@ -584,6 +584,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     }
 
     private fun clearCandidates() {
+        ++suggestionRequestId
         if (::candidateBar.isInitialized) candidateBar.removeAllViews()
     }
 
@@ -640,8 +641,8 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     }
 
     private fun applyGrammarFix(issue: GrammarIssue, before: String, after: String) {
-        val currentBefore = safeGetTextBeforeCursor(1000) ?: ""
-        val currentAfter = safeGetTextAfterCursor(1000) ?: ""
+        val currentBefore = safeGetTextBeforeCursor(2000) ?: ""
+        val currentAfter = safeGetTextAfterCursor(2000) ?: ""
         val currentSnapshot = currentBefore + currentAfter
         if (grammarSnapshot != currentSnapshot) {
             Toast.makeText(this, R.string.text_changed_recheck, Toast.LENGTH_SHORT).show()
@@ -780,11 +781,13 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         val inputType = info.inputType
         val clazz = inputType and InputType.TYPE_MASK_CLASS
         val variation = inputType and InputType.TYPE_MASK_VARIATION
-        return (clazz == InputType.TYPE_CLASS_TEXT && variation in setOf(
+        val isPassword = (clazz == InputType.TYPE_CLASS_TEXT && variation in setOf(
             InputType.TYPE_TEXT_VARIATION_PASSWORD,
             InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
             InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
         )) || (clazz == InputType.TYPE_CLASS_NUMBER && variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD)
+        val noLearning = (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0
+        return isPassword || noLearning
     }
 
     private fun isNumericInput(info: EditorInfo): Boolean =
