@@ -55,12 +55,12 @@ class SuggestionEngine(private val context: Context) {
     fun suggest(lang: String, word: String, max: Int, maxDistance: Int = 2): List<String> {
         val dict = dictionaries[lang] ?: return emptyList()
         val target = word.lowercase()
-        if (dict.isEmpty() || target.isEmpty() || max <= 0 || maxDistance < 1) return emptyList()
+        if (dict.isEmpty() || target.isEmpty() || max <= 0 || maxDistance < 0) return emptyList()
 
         return dict.asSequence()
             .filter { abs(it.length - target.length) <= maxDistance }
             .map { it to boundedDamerauDistance(target, it, maxDistance) }
-            .filter { it.second in 1..maxDistance }
+            .filter { it.second in 0..maxDistance }
             .sortedWith(compareBy<Pair<String, Int>> { it.second }.thenBy { it.first })
             .take(max)
             .map { it.first }
