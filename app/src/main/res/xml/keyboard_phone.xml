@@ -26,7 +26,7 @@
     <Row>
         <Key android:codes="42" android:keyLabel="*" android:keyWidth="23%p" android:keyEdgeFlags="left" />
         <Key android:codes="35" android:keyLabel="#" android:keyWidth="23%p" />
-        <Key android:codes="-5" android:keyLabel="⌫" android:keyWidth="23%p" />
+        <Key android:codes="-5" android:isRepeatable="true" android:keyLabel="⌫" android:keyWidth="23%p" />
         <Key android:codes="-103" android:keyLabel="⏎" android:keyWidth="25%p" android:keyEdgeFlags="right" />
     </Row>
 
