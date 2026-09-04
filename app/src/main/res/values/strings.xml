@@ -34,4 +34,6 @@
     <string name="clipboard_disabled_for_field">Clipboard history is disabled in this field</string>
     <string name="language_changed">Language: %1$s</string>
     <string name="back_to_letters">ABC</string>
+    <string name="desc_btn_emoji_abc">Switch back to letters</string>
+    <string name="desc_btn_emoji_delete">Delete</string>
 </resources>

@@ -96,7 +96,7 @@ class ClipboardHistoryActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menu.add(0, 1, 0, R.string.clear_all).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
+        menu.add(0, 1, 0, R.string.clear_all).setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         return true
     }
 

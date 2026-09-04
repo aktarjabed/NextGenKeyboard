@@ -161,6 +161,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         EMOJI_SET.forEach { emoji ->
             emojiStrip.addView(TextView(this).apply {
                 text = emoji
+                contentDescription = emoji
                 textSize = 26f
                 minimumHeight = dp(48)
                 minimumWidth = dp(48)
@@ -217,6 +218,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         updateKeyLabels()
         clearCandidates()
         registerClipboardListenerIfAllowed()
+        ClipboardInsertBus.registerListener { deliverPendingInsert() }
         deliverPendingInsert()
     }
 
@@ -230,6 +232,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         grammarSnapshot = null
         flushTransliteration()
         unregisterClipboardListener()
+        ClipboardInsertBus.unregisterListener()
         super.onFinishInputView(finishingInput)
     }
 
@@ -671,6 +674,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         val padV = dp(4)
         val tv = TextView(this).apply {
             this.text = text
+            contentDescription = text
             minimumHeight = dp(48)
             setTextColor(if (clickable) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt())
             setPadding(padH, padV, padH, padV)

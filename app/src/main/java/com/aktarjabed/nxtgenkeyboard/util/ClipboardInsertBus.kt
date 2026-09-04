@@ -7,9 +7,20 @@ object ClipboardInsertBus {
     @Volatile
     private var pendingText: String? = null
 
+    private var listener: (() -> Unit)? = null
+
+    fun registerListener(l: () -> Unit) {
+        listener = l
+    }
+
+    fun unregisterListener() {
+        listener = null
+    }
+
     fun post(token: String, text: String) {
         pendingToken = token
         pendingText = text
+        listener?.invoke()
     }
 
     fun peek(token: String): String? {
