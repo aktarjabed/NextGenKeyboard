@@ -13,6 +13,7 @@ NxtGenKeyboard is a privacy-oriented, multilingual Android keyboard (IME) with b
 *   **Customizable Input Feedback:** Toggle keypress sound and vibration. Haptic and audio feedback use standard Android effects.
 *   **Privacy-Focused Defaults:** Sensitive fields (passwords, PINs, OTPs) disable learning, suggestions, grammar, transliteration, and clipboard capture. No user text is logged or sent externally (unless online grammar is explicitly enabled in Settings).
 *   **Modern Dark Theme:** Optimized for eye comfort; matches system dark mode (uses AppCompat DayNight).
+*   **Performance:** Room clipboard queries are optimized. NxtGenKeyboard utilizes coroutines and correctly debounces suggestion generation without introducing N+1 queries.
 
 ## Installation & Setup
 

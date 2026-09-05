@@ -20,27 +20,18 @@ object PhoneticTransliterator {
             "kya" to "क्या",
             "hai" to "है",
             "hain" to "हैं",
-            "ka" to "का",
-            "ki" to "की",
-            "ke" to "के",
-            "mein" to "में",
-            "se" to "से",
-            "ko" to "को"
+            "mein" to "में"
         ),
         "bn" to mapOf(
             "bangla" to "বাংলা",
             "namaste" to "নমস্তে",
             "ami" to "আমি",
             "tumi" to "তুমি",
-            "se" to "সে",
             "ebong" to "এবং",
             "kor" to "কর",
             "kora" to "করা",
-            "na" to "না",
-            "ha" to "হ্যাঁ",
             "nei" to "নেই",
-            "ache" to "আছে",
-            "ki" to "কি"
+            "ache" to "আছে"
         )
     )
 
@@ -155,10 +146,15 @@ object PhoneticTransliterator {
                 continue
             }
 
-            val consonant = config.consonants.firstOrNull { source.startsWith(it.first, index) }
-            val vowel = config.vowels.firstOrNull { source.startsWith(it.first, index) }
+            val consonant = config.consonants
+                .filter { source.startsWith(it.first, index) }
+                .maxByOrNull { it.first.length }
 
-            if (vowel != null && (consonant == null || vowel.first.length >= consonant.first.length)) {
+            val vowel = config.vowels
+                .filter { source.startsWith(it.first, index) }
+                .maxByOrNull { it.first.length }
+
+            if (vowel != null && (consonant == null || vowel.first.length > consonant.first.length)) {
                 val (roman, mark) = vowel
                 if (!previousWasConsonant) {
                     output.append(config.independentVowels[roman] ?: roman)
