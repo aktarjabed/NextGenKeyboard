@@ -20,7 +20,7 @@ interface ClipboardDao {
         SELECT * FROM (
             SELECT * FROM clipboard WHERE pinned = 0 ORDER BY createdAt DESC LIMIT 200
         )
-        ORDER BY pinned DESC, createdAt DESC
+        ORDER BY pinned DESC, createdAt DESC, id DESC
         """
     )
     fun all(): Flow<List<ClipboardEntity>>

@@ -23,6 +23,13 @@ class SuggestionEngineTest {
     }
 
     @Test
+    fun `suggest transposition correctly matches`() {
+        engine.load("en")
+        val suggestions = engine.suggest("en", "teh", max = 3, maxDistance = 1)
+        assertTrue("Should correctly correct transposed teh -> the", suggestions.contains("the"))
+    }
+
+    @Test
     fun `suggest respects maxDistance`() {
         engine.load("en")
         val suggestions = engine.suggest("en", "teh", max = 5, maxDistance = 0)

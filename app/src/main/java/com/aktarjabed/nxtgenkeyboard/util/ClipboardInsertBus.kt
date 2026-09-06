@@ -23,8 +23,9 @@ object ClipboardInsertBus {
     }
 
     fun post(token: String, text: String) {
+        val listener = listeners[token] ?: return
         pending.set(PendingInsert(token, text))
-        listeners[token]?.invoke()
+        listener.invoke()
     }
 
     fun consume(token: String, action: (String) -> Boolean): Boolean {

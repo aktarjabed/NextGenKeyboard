@@ -252,18 +252,23 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         super.onStartInputView(attribute, restarting)
         if (!::keyboardView.isInitialized) return
 
-        // Synchronize language with system-selected subtype, fallback to prefs
+        // Only override language index if system subtype explicitly mismatches our current selection
         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         val currentSubtype = imm.currentInputMethodSubtype
         val systemLang = currentSubtype?.locale?.takeIf { it.isNotEmpty() }
             ?.substringBefore('_')?.lowercase(Locale.ROOT)
             ?: currentSubtype?.languageTag?.substringBefore('-')?.lowercase(Locale.ROOT)
+
+        val currentPrefLang = languages.getOrNull(prefs.languageIndex.coerceIn(0, languages.lastIndex)) ?: "en"
         val systemIndex = systemLang?.let { languages.indexOf(it) } ?: -1
-        if (systemIndex >= 0) {
-            langIndex = systemIndex
-            prefs.languageIndex = systemIndex
+
+        if (systemIndex >= 0 && systemLang != currentPrefLang) {
+             // System subtype explicitly changed to a different supported language
+             langIndex = systemIndex
+             prefs.languageIndex = systemIndex
         } else {
-            langIndex = prefs.languageIndex.coerceIn(0, languages.lastIndex)
+             // Retain manual user selection
+             langIndex = prefs.languageIndex.coerceIn(0, languages.lastIndex)
         }
 
         shiftState = 0
@@ -516,6 +521,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     private fun shouldAutoCap(): Boolean {
         if (!prefs.autoCapitalize || sensitiveEditor) return false
         if (symbolActive || currentLang() != "en") return false
+        if (!editorAllowsCapitalizationFallback()) return false
 
         val ic = currentInputConnection ?: return false
 
@@ -534,8 +540,9 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
             return true
         }
 
-        // Conservative compatibility fallback.
-        return editorAllowsCapitalizationFallback()
+        val beforeText = safeGetTextBeforeCursor(100) ?: return false
+        val text = beforeText.trimEnd()
+        return text.isEmpty() || text.endsWith(".") || text.endsWith("!") || text.endsWith("?") || text.endsWith("\n")
     }
 
     private fun flushTransliteration() {
@@ -570,11 +577,16 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
             }
             return
         }
-        val before = safeGetTextBeforeCursor(2)
-        val deleteCount = if (before != null && before.length == 2 && Character.isSurrogatePair(before[0], before[1])) 2 else 1
-        if (safeDeleteSurroundingText(deleteCount, 0)) {
-            if (!sensitiveEditor) afterWordMaybe()
+
+        val ic = currentInputConnection
+        if (ic != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            ic.deleteSurroundingTextInCodePoints(1, 0)
+        } else {
+            val before = safeGetTextBeforeCursor(2)
+            val deleteCount = if (before != null && before.length == 2 && Character.isSurrogatePair(before[0], before[1])) 2 else 1
+            safeDeleteSurroundingText(deleteCount, 0)
         }
+        if (!sensitiveEditor) afterWordMaybe()
     }
 
     private fun deleteLastCodePoint() {
@@ -594,6 +606,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         showEmojiPanel(false)
         langIndex = (langIndex + 1) % languages.size
         prefs.languageIndex = langIndex
+
         shiftState = 0
         keyboardView.keyboard = Keyboard(this, R.xml.keyboard_qwerty)
         keyboardView.setShifted(false)
@@ -649,7 +662,10 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
                 noEnter == 0
         if (usable) {
             try {
-                currentInputConnection?.performEditorAction(action)
+                val success = currentInputConnection?.performEditorAction(action) ?: false
+                if (!success) {
+                    safeCommitText("\n")
+                }
             } catch (e: Exception) {
                 safeCommitText("\n")
             }
@@ -708,7 +724,11 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         val padV = dp(4)
         items.forEach { suggestion ->
             val tv = TextView(this).apply {
-                text = preserveCapitalization(oldWord, suggestion)
+                val preservedText = preserveCapitalization(oldWord, suggestion)
+                text = preservedText
+                contentDescription = preservedText
+                minimumHeight = dp(48)
+                minimumWidth = dp(48)
                 setTextColor(0xFFFFFFFF.toInt())
                 setPadding(padH, padV, padH, padV)
                 textSize = 16f
@@ -759,12 +779,19 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         flushTransliteration()
 
         val maxChars = 2000
-        val before = safeGetTextBeforeCursor(maxChars) ?: ""
         val selected = safeGetSelectedText() ?: ""
 
-        val remaining = maxChars - before.length - selected.length
-        val after = if (remaining > 0) {
-            safeGetTextAfterCursor(remaining) ?: ""
+        if (selected.length > maxChars) {
+            android.widget.Toast.makeText(this, R.string.text_changed_recheck, android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val remainingBeforeAfter = maxChars - selected.length
+        val before = safeGetTextBeforeCursor(remainingBeforeAfter) ?: ""
+        val remainingAfter = remainingBeforeAfter - before.length
+
+        val after = if (remainingAfter > 0) {
+            safeGetTextAfterCursor(remainingAfter) ?: ""
         } else {
             ""
         }
@@ -826,10 +853,11 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     private fun applyGrammarFix(issue: GrammarIssue) {
         val snapshot = grammarSnapshot ?: return
 
-        val currentBefore = safeGetTextBeforeCursor(2000) ?: ""
         val currentSelected = safeGetSelectedText() ?: ""
-        val remaining = 2000 - currentBefore.length - currentSelected.length
-        val currentAfter = if (remaining > 0) safeGetTextAfterCursor(remaining) ?: "" else ""
+        val remainingBeforeAfter = 2000 - currentSelected.length
+        val currentBefore = if (remainingBeforeAfter > 0) safeGetTextBeforeCursor(remainingBeforeAfter) ?: "" else ""
+        val remainingAfter = remainingBeforeAfter - currentBefore.length
+        val currentAfter = if (remainingAfter > 0) safeGetTextAfterCursor(remainingAfter) ?: "" else ""
 
         val currentText = currentBefore + currentSelected + currentAfter
         val currentCursorStart = currentBefore.length
@@ -934,6 +962,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         clipboardRegistered = false
     }
 
+    @Suppress("MissingPermission")
     private fun isNetworkAvailable(): Boolean {
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
         val network = cm.activeNetwork ?: return false
