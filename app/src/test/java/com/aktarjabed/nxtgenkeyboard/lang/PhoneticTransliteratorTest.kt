@@ -33,8 +33,20 @@ class PhoneticTransliteratorTest {
         assertEquals("कि", PhoneticTransliterator.transliterate("ki", "hi"))
         assertEquals("की", PhoneticTransliterator.transliterate("kee", "hi"))
         assertEquals("की", PhoneticTransliterator.transliterate("kii", "hi"))
+        assertEquals("क", PhoneticTransliterator.transliterate("k", "hi"))
+        assertEquals("क", PhoneticTransliterator.transliterate("ka", "hi"))
+        assertEquals("का", PhoneticTransliterator.transliterate("kaa", "hi"))
+        assertEquals("क्रि", PhoneticTransliterator.transliterate("kri", "hi"))
         assertEquals("कु", PhoneticTransliterator.transliterate("ku", "hi"))
         assertEquals("कू", PhoneticTransliterator.transliterate("koo", "hi"))
+
+        assertEquals("কি", PhoneticTransliterator.transliterate("ki", "bn"))
+        assertEquals("কী", PhoneticTransliterator.transliterate("kee", "bn"))
+        assertEquals("কী", PhoneticTransliterator.transliterate("kii", "bn"))
+        assertEquals("ক", PhoneticTransliterator.transliterate("k", "bn"))
+        assertEquals("ক", PhoneticTransliterator.transliterate("ka", "bn"))
+        assertEquals("কা", PhoneticTransliterator.transliterate("kaa", "bn"))
+        assertEquals("ক্রি", PhoneticTransliterator.transliterate("kri", "bn"))
     }
 
     @Test

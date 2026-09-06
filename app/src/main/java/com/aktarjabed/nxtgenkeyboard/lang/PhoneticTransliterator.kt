@@ -88,7 +88,7 @@ object PhoneticTransliterator {
         vowels = listOf(
             "ai" to "ৈ", "au" to "ৌ", "aa" to "া", "ee" to "ী",
             "ii" to "ী", "oo" to "ূ", "uu" to "ূ", "e" to "ে",
-            "i" to "ি", "o" to "ো", "u" to "ু", "a" to "া"
+            "i" to "ি", "o" to "ো", "u" to "ু", "a" to ""
         ),
         independentVowels = mapOf(
             "aa" to "আ", "ee" to "ঈ", "ii" to "ঈ", "oo" to "ঊ",
@@ -159,8 +159,9 @@ object PhoneticTransliterator {
                 if (!previousWasConsonant) {
                     output.append(config.independentVowels[roman] ?: roman)
                 } else {
-                    if (config === HI && roman == "a") {
-                        // No mark for inherent 'a' in Hindi
+                    if (roman == "a") {
+                        // No mark for inherent 'a' in Hindi/Bengali, unless it is a special case (we just don't append mark)
+                        if (mark.isNotEmpty()) output.append(mark)
                     } else {
                         output.append(mark)
                     }
