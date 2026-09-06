@@ -62,7 +62,8 @@ data class GrammarSnapshot(
     val cursorEnd: Int,
     val language: String,
     val windowStart: Int,
-    val windowEnd: Int
+    val windowEnd: Int,
+    val requestId: Long
 )
 
 class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListener {
@@ -91,6 +92,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     private var currentEditorInfo: EditorInfo? = null
     private var grammarSnapshot: GrammarSnapshot? = null
     private var grammarJob: Job? = null
+    private var grammarRequestId: Long = 0
     private var suggestionJob: Job? = null
     private var lastShiftTap = 0L
     private var sensitiveEditor = false
@@ -106,6 +108,26 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
 
     // Typo-safe learning: a word is only learned after being typed LEARN_THRESHOLD times.
     private val typedWordCounts = java.util.HashMap<String, Int>()
+
+
+    private val dictionarySuggestionsAllowed: Boolean
+        get() = !sensitiveEditor &&
+                !numericEditor &&
+                !phoneEditor &&
+                !editorNoSuggestions &&
+                !editorAutoComplete
+
+    private val autoCorrectAllowed: Boolean
+        get() = dictionarySuggestionsAllowed &&
+                editorAutoCorrect &&
+                prefs.autoCorrect &&
+                currentLang() == "en"
+
+    private val personalizedLearningAllowed: Boolean
+        get() = !sensitiveEditor &&
+                !noPersonalizedLearning &&
+                !numericEditor &&
+                !phoneEditor
 
     private val clipboardManager by lazy {
         getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -219,6 +241,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         if (oldSelStart != newSelStart || oldSelEnd != newSelEnd) {
             cancelSuggestions()
             grammarJob?.cancel()
+            grammarRequestId++
             grammarJob = null
             grammarSnapshot = null
             clearCandidates()
@@ -248,6 +271,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         showEmojiPanel(false)
         romanBuffer.clear()
         grammarJob?.cancel()
+        grammarRequestId++
         grammarSnapshot = null
 
         val layoutRes = when {
@@ -288,6 +312,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         typedWordCounts.clear()
         cancelSuggestions()
         grammarJob?.cancel()
+        grammarRequestId++
         grammarJob = null
         grammarSnapshot = null
 
@@ -305,6 +330,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         typedWordCounts.clear()
         cancelSuggestions()
         grammarJob?.cancel()
+        grammarRequestId++
         grammarJob = null
         grammarSnapshot = null
 
@@ -319,6 +345,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     }
 
     override fun onCurrentInputMethodSubtypeChanged(newSubtype: InputMethodSubtype?) {
+        flushTransliteration()
         super.onCurrentInputMethodSubtypeChanged(newSubtype)
         if (!::keyboardView.isInitialized) return
         val tag = newSubtype?.locale?.takeIf { it.isNotEmpty() }
@@ -333,6 +360,8 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
             keyboardView.setShifted(false)
             updateKeyLabels()
             clearCandidates()
+            grammarRequestId++
+            grammarSnapshot = null
             Toast.makeText(
                 this,
                 getString(R.string.language_changed, currentLang().uppercase(Locale.ROOT)),
@@ -413,10 +442,10 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     private fun handleChar(code: Int) {
         if (code == 32) {
             flushTransliteration()
-            if (!sensitiveEditor && !editorNoSuggestions && prefs.autoCorrect && currentLang() == "en") {
+            if (autoCorrectAllowed) {
                 tryAutoCorrect()
             }
-            if (!sensitiveEditor && !editorNoSuggestions) maybeLearnCurrentWord()
+            maybeLearnCurrentWord()
             safeCommitText(" ")
             afterWordMaybe()
             return
@@ -459,18 +488,50 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         }
     }
 
+    private fun editorAllowsCapitalizationFallback(): Boolean {
+        val info = currentEditorInfo ?: return false
+        val inputType = info.inputType
+        val clazz = inputType and InputType.TYPE_MASK_CLASS
+        if (clazz != InputType.TYPE_CLASS_TEXT) return false
+
+        val variation = inputType and InputType.TYPE_MASK_VARIATION
+
+        return variation !in setOf(
+            InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
+            InputType.TYPE_TEXT_VARIATION_EMAIL_SUBJECT,
+            InputType.TYPE_TEXT_VARIATION_URI,
+            InputType.TYPE_TEXT_VARIATION_PASSWORD,
+            InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
+            InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD,
+            InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS,
+            InputType.TYPE_TEXT_VARIATION_FILTER
+        )
+    }
+
     /** True when the next letter should be capitalized (sentence start / after . ! ? / newline). */
     private fun shouldAutoCap(): Boolean {
-        if (!prefs.autoCapitalize || sensitiveEditor || editorNoSuggestions) return false
+        if (!prefs.autoCapitalize || sensitiveEditor) return false
         if (symbolActive || currentLang() != "en") return false
-        val before = safeGetTextBeforeCursor(2) ?: return false
-        if (before.endsWith("\n")) return true
-        val trimmed = before.trimEnd()
-        if (trimmed.isEmpty()) return true
-        return when (trimmed.last()) {
-            '.', '!', '?' -> true
-            else -> false
+
+        val ic = currentInputConnection ?: return false
+
+        val requestedModes =
+            android.text.TextUtils.CAP_MODE_CHARACTERS or
+            android.text.TextUtils.CAP_MODE_WORDS or
+            android.text.TextUtils.CAP_MODE_SENTENCES
+
+        val capsMode = try {
+            ic.getCursorCapsMode(requestedModes)
+        } catch (_: Exception) {
+            0
         }
+
+        if (capsMode != 0) {
+            return true
+        }
+
+        // Conservative compatibility fallback.
+        return editorAllowsCapitalizationFallback()
     }
 
     private fun flushTransliteration() {
@@ -535,6 +596,8 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         updateKeyLabels()
         keyboardView.invalidateAllKeys()
         clearCandidates()
+        grammarRequestId++
+        grammarSnapshot = null
         Toast.makeText(
             this,
             getString(R.string.language_changed, currentLang().uppercase(Locale.ROOT)),
@@ -562,7 +625,11 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         if (sensitiveEditor) return
         val token = sessionToken ?: return
         ClipboardInsertBus.consume(token) { pendingText ->
-            safeCommitText(pendingText)
+            if (!safeCommitText(pendingText)) {
+                false
+            } else {
+                true
+            }
         }
         clearCandidates()
     }
@@ -588,7 +655,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     }
 
     private fun afterWordMaybe() {
-        if (sensitiveEditor || numericEditor || phoneEditor || editorNoSuggestions) {
+        if (!dictionarySuggestionsAllowed) {
             clearCandidates()
             return
         }
@@ -656,8 +723,9 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         if (match != null) {
             val matchedWord = match.groupValues[1]
             val trailing = match.groupValues[2]
-            safeDeleteSurroundingText(matchedWord.length + trailing.length, 0)
-            safeCommitText(newWord + trailing)
+            if (safeDeleteSurroundingText(matchedWord.length + trailing.length, 0)) {
+                safeCommitText(newWord + trailing)
+            }
         }
         clearCandidates()
     }
@@ -695,9 +763,11 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         val cursorEnd = cursorStart + selected.length
 
         grammarJob?.cancel()
+        grammarRequestId++
+        val currentRequestId = grammarRequestId
 
         val lang = currentLang()
-        grammarSnapshot = GrammarSnapshot(text, cursorStart, cursorEnd, lang, 0, text.length)
+        grammarSnapshot = GrammarSnapshot(text, cursorStart, cursorEnd, lang, 0, text.length, currentRequestId)
 
         grammarJob = scope.launch {
             val issues = withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -711,7 +781,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
                     offlineGrammar.check(text)
                 }
             }
-            if (grammarJob?.isActive == true) showGrammarIssues(issues)
+            if (grammarJob?.isActive == true && grammarRequestId == currentRequestId) showGrammarIssues(issues)
         }
     }
 
@@ -755,7 +825,10 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         if (currentText != snapshot.text ||
             currentCursorStart != snapshot.cursorStart ||
             currentCursorEnd != snapshot.cursorEnd ||
-            currentLang() != snapshot.language) {
+            currentLang() != snapshot.language ||
+            snapshot.windowStart != 0 ||
+            snapshot.windowEnd != snapshot.text.length ||
+            grammarRequestId != snapshot.requestId) {
 
             android.widget.Toast.makeText(this, R.string.text_changed_recheck, android.widget.Toast.LENGTH_SHORT).show()
             clearCandidates()
@@ -773,9 +846,10 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         val connection = currentInputConnection ?: return
         connection.beginBatchEdit()
         try {
-            safeDeleteSurroundingText(cursor - start, 0)
-            safeCommitText(replacement)
-            if (middle.isNotEmpty()) safeCommitText(middle)
+            if (safeDeleteSurroundingText(cursor - start, 0)) {
+                safeCommitText(replacement)
+                if (middle.isNotEmpty()) safeCommitText(middle)
+            }
         } finally {
             connection.endBatchEdit()
         }
@@ -876,7 +950,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
 
     /** Learns a word only after it has been typed LEARN_THRESHOLD times in this session. */
     private fun maybeLearnCurrentWord() {
-        if (!prefs.learnWords || noPersonalizedLearning || sensitiveEditor) return
+        if (!prefs.learnWords || !personalizedLearningAllowed) return
         if (!suggestionEngine.isLoaded(currentLang())) return
         val word = lastWordBeforeCursor() ?: return
         if (word.length < 2) return
