@@ -48,11 +48,13 @@ object PhoneticTransliterator {
             "ksh" to "क्ष", "gy" to "ज्ञ", "bh" to "भ", "chh" to "छ",
             "ch" to "च", "dh" to "ध", "gh" to "घ", "jh" to "झ",
             "kh" to "ख", "ph" to "फ", "sh" to "श", "th" to "थ",
+            "Th" to "ठ", "Dh" to "ढ",
             "dr" to "द्र", "kr" to "क्र", "gr" to "ग्र", "pr" to "प्र",
             "br" to "ब्र", "mr" to "म्र", "tr" to "त्र",
             "r" to "र", "l" to "ल", "v" to "व", "w" to "व",
             "y" to "य", "h" to "ह", "m" to "म", "n" to "न",
             "t" to "त", "d" to "द", "p" to "प", "b" to "ब",
+            "T" to "ट", "D" to "ड", "N" to "ण",
             "s" to "स", "g" to "ग", "j" to "ज", "z" to "ज़",
             "f" to "फ़", "q" to "क़", "c" to "क", "k" to "क"
         ),
@@ -77,18 +79,20 @@ object PhoneticTransliterator {
             "ksh" to "ক্ষ", "gy" to "জ্ঞ", "bh" to "ভ", "chh" to "ছ",
             "ch" to "চ", "dh" to "ধ", "gh" to "ঘ", "jh" to "ঝ",
             "kh" to "খ", "ph" to "ফ", "sh" to "শ", "th" to "থ",
+            "Th" to "ঠ", "Dh" to "ঢ",
             "dr" to "দ্র", "kr" to "ক্র", "gr" to "গ্র", "pr" to "প্র",
             "br" to "ব্র", "mr" to "ম্র", "tr" to "ত্র",
             "r" to "র", "l" to "ল", "v" to "ভ", "w" to "ও",
             "y" to "য", "h" to "হ", "m" to "ম", "n" to "ন",
             "t" to "ত", "d" to "দ", "p" to "প", "b" to "ব",
+            "T" to "ট", "D" to "ড", "N" to "ণ",
             "s" to "স", "g" to "গ", "j" to "জ", "z" to "জ",
             "f" to "ফ", "q" to "ক", "c" to "ক", "k" to "ক"
         ),
         vowels = listOf(
             "ai" to "ৈ", "au" to "ৌ", "aa" to "া", "ee" to "ী",
-            "ii" to "ী", "oo" to "ূ", "uu" to "ূ", "e" to "ে",
-            "i" to "ি", "o" to "ো", "u" to "ু", "a" to ""
+            "ii" to "ী", "oo" to "ূ", "uu" to "ূ", "ri" to "ৃ",
+            "e" to "ে", "i" to "ি", "o" to "ো", "u" to "ু", "a" to ""
         ),
         independentVowels = mapOf(
             "aa" to "আ", "ee" to "ঈ", "ii" to "ঈ", "oo" to "ঊ",
@@ -133,7 +137,8 @@ object PhoneticTransliterator {
     }
 
     private fun transliterateWord(word: String, config: Config): String {
-        val source = word.lowercase()
+        val source = word // DON'T LOWERCASE - preserving case allows distinguishing T/t
+        val sourceLower = word.lowercase()
         val output = StringBuilder()
         var index = 0
         var previousWasConsonant = false
@@ -146,12 +151,16 @@ object PhoneticTransliterator {
                 continue
             }
 
+            // First try case-sensitive match (for retroflex T, D, etc.), fallback to lowercase
             val consonant = config.consonants
                 .filter { source.startsWith(it.first, index) }
                 .maxByOrNull { it.first.length }
+                ?: config.consonants
+                    .filter { sourceLower.startsWith(it.first, index) }
+                    .maxByOrNull { it.first.length }
 
             val vowel = config.vowels
-                .filter { source.startsWith(it.first, index) }
+                .filter { sourceLower.startsWith(it.first, index) }
                 .maxByOrNull { it.first.length }
 
             if (vowel != null && (consonant == null || vowel.first.length > consonant.first.length)) {

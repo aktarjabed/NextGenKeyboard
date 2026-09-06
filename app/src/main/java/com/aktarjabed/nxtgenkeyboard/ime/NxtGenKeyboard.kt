@@ -340,6 +340,10 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     override fun onDestroy() {
         grammarJob?.cancel()
         unregisterClipboardListener()
+        sessionToken?.let {
+            ClipboardInsertBus.unregisterListener(it)
+            ClipboardInsertBus.clear(it)
+        }
         scope.cancel()
         super.onDestroy()
     }
@@ -722,9 +726,18 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         val match = Regex("""(\p{L}+)([^\p{L}]*)$""").find(before)
         if (match != null) {
             val matchedWord = match.groupValues[1]
+            if (matchedWord != oldWord) {
+                clearCandidates()
+                return
+            }
             val trailing = match.groupValues[2]
-            if (safeDeleteSurroundingText(matchedWord.length + trailing.length, 0)) {
-                safeCommitText(newWord + trailing)
+            val ic = currentInputConnection ?: return
+            if (!ic.beginBatchEdit()) return
+            try {
+                if (!safeDeleteSurroundingText(matchedWord.length + trailing.length, 0)) return
+                if (!safeCommitText(newWord + trailing)) return
+            } finally {
+                ic.endBatchEdit()
             }
         }
         clearCandidates()
@@ -844,11 +857,12 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
 
         val middle = currentBefore.substring(end, cursor)
         val connection = currentInputConnection ?: return
-        connection.beginBatchEdit()
+        if (!connection.beginBatchEdit()) return
         try {
-            if (safeDeleteSurroundingText(cursor - start, 0)) {
-                safeCommitText(replacement)
-                if (middle.isNotEmpty()) safeCommitText(middle)
+            if (!safeDeleteSurroundingText(cursor - start, 0)) return
+            if (!safeCommitText(replacement)) return
+            if (middle.isNotEmpty()) {
+                if (!safeCommitText(middle)) return
             }
         } finally {
             connection.endBatchEdit()
@@ -941,11 +955,15 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         val lower = word.lowercase(Locale.ROOT)
         if (suggestionEngine.contains(lang, lower)) return false
         val suggestion = suggestionEngine.suggest(lang, lower, 1, 1).firstOrNull() ?: return false
-        if (safeDeleteSurroundingText(word.length, 0)) {
-            safeCommitText(preserveCapitalization(word, suggestion))
+        val ic = currentInputConnection ?: return false
+        if (!ic.beginBatchEdit()) return false
+        try {
+            if (!safeDeleteSurroundingText(word.length, 0)) return false
+            if (!safeCommitText(preserveCapitalization(word, suggestion))) return false
             return true
+        } finally {
+            ic.endBatchEdit()
         }
-        return false
     }
 
     /** Learns a word only after it has been typed LEARN_THRESHOLD times in this session. */
