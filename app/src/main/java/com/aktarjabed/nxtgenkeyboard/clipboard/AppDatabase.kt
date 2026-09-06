@@ -28,11 +28,18 @@ abstract class AppDatabase : RoomDatabase() {
 
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // Deduplicate clipboard: keep newest (max id) per text
+                // Deduplicate clipboard: keep newest pinned survivor
                 db.execSQL(
                     """
                     DELETE FROM clipboard WHERE id NOT IN (
-                        SELECT MAX(id) FROM clipboard GROUP BY text
+                        SELECT id FROM (
+                            SELECT id,
+                                   ROW_NUMBER() OVER(
+                                       PARTITION BY text
+                                       ORDER BY pinned DESC, createdAt DESC, id DESC
+                                   ) as rn
+                            FROM clipboard
+                        ) WHERE rn = 1
                     )
                     """.trimIndent()
                 )

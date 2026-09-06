@@ -30,6 +30,7 @@ class ClipboardRepository(private val dao: ClipboardDao) {
 
     suspend fun togglePin(item: ClipboardEntity) {
         dao.setPinned(item.id, !item.pinned)
+        dao.trimHistory()
     }
 
     suspend fun clearUnpinned() {

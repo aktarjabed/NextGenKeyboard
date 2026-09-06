@@ -13,7 +13,16 @@ interface ClipboardDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(item: ClipboardEntity)
 
-    @Query("SELECT * FROM clipboard ORDER BY pinned DESC, createdAt DESC LIMIT 200")
+        @Query(
+        """
+        SELECT * FROM clipboard WHERE pinned = 1
+        UNION ALL
+        SELECT * FROM (
+            SELECT * FROM clipboard WHERE pinned = 0 ORDER BY createdAt DESC LIMIT 200
+        )
+        ORDER BY pinned DESC, createdAt DESC
+        """
+    )
     fun all(): Flow<List<ClipboardEntity>>
 
     @Query("SELECT id FROM clipboard WHERE text = :text LIMIT 1")
