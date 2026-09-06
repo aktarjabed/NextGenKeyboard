@@ -38,7 +38,22 @@ class ClipboardHistoryActivity : AppCompatActivity() {
 
         val dp = { value: Int -> (value * resources.displayMetrics.density).toInt() }
 
-        val rootView = android.widget.FrameLayout(this)
+        val rootView = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+        }
+
+        val toolbar = androidx.appcompat.widget.Toolbar(this).apply {
+            title = getString(R.string.clipboard_history)
+            background = android.graphics.drawable.ColorDrawable(0xFF1E1E1E.toInt())
+            setTitleTextColor(0xFFFFFFFF.toInt())
+        }
+        rootView.addView(toolbar, android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+        ))
+
+        val listContainer = android.widget.FrameLayout(this)
+
         val listView = ListView(this)
         val emptyView = android.widget.TextView(this).apply {
             text = getString(R.string.clipboard_empty)
@@ -46,22 +61,32 @@ class ClipboardHistoryActivity : AppCompatActivity() {
             setPadding(dp(32), dp(32), dp(32), dp(32))
         }
 
-        rootView.addView(listView, android.widget.FrameLayout.LayoutParams(
+        listContainer.addView(listView, android.widget.FrameLayout.LayoutParams(
             android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
             android.widget.FrameLayout.LayoutParams.MATCH_PARENT
         ))
-        rootView.addView(emptyView, android.widget.FrameLayout.LayoutParams(
+        listContainer.addView(emptyView, android.widget.FrameLayout.LayoutParams(
             android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
             android.widget.FrameLayout.LayoutParams.MATCH_PARENT
         ))
-
         listView.emptyView = emptyView
+
+        rootView.addView(listContainer, android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+            0,
+            1f
+        ))
 
         ViewCompat.setOnApplyWindowInsetsListener(rootView) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            toolbar.setPadding(0, systemBars.top, 0, 0)
+            listContainer.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom)
             insets
         }
+
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        toolbar.setNavigationOnClickListener { finish() }
 
         adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, mutableListOf())
         listView.adapter = adapter
@@ -146,7 +171,7 @@ class ClipboardHistoryActivity : AppCompatActivity() {
 
     private fun copyToSystemClipboard(text: String) {
         val clipboard = getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager ?: return
-        clipboard.setPrimaryClip(ClipData.newPlainText("NxtGenClip", text))
+        clipboard.setPrimaryClip(ClipData.newPlainText("NxtGenClip", text).apply { description.extras = android.os.PersistableBundle().apply { putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true) } })
         Toast.makeText(this, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
     }
 

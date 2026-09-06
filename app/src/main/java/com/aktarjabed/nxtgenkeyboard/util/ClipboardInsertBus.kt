@@ -27,7 +27,24 @@ object ClipboardInsertBus {
         listeners[token]?.invoke()
     }
 
+    fun consume(token: String, action: (String) -> Boolean): Boolean {
+        while (true) {
+            val current = pending.get() ?: return false
+            if (current.token != token) return false
+            if (pending.compareAndSet(current, null)) {
+                if (action(current.text)) {
+                    return true
+                } else {
+                    // Try to restore if no new item has been set
+                    pending.compareAndSet(null, current)
+                    return false
+                }
+            }
+        }
+    }
+
     fun take(token: String): String? {
+
         while (true) {
             val current = pending.get() ?: return null
             if (current.token == token) {

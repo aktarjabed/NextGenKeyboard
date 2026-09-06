@@ -14,7 +14,7 @@
         <LinearLayout
             android:id="@+id/candidateBar"
             android:layout_width="wrap_content"
-            android:layout_height="46dp"
+            android:layout_height="48dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingHorizontal="8dp" />

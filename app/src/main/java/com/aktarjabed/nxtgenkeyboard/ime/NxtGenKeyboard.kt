@@ -56,6 +56,15 @@ private val EMOJI_SET = listOf(
     "⭐", "🌟", "✨", "⚡", "🎉", "🎊", "🎁", "🍕", "☕", "🚀"
 )
 
+data class GrammarSnapshot(
+    val text: String,
+    val cursorStart: Int,
+    val cursorEnd: Int,
+    val language: String,
+    val windowStart: Int,
+    val windowEnd: Int
+)
+
 class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListener {
 
     private lateinit var keyboardView: KeyboardView
@@ -80,7 +89,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     private var symbolActive = false
     private var emojiVisible = false
     private var currentEditorInfo: EditorInfo? = null
-    private var grammarSnapshot: String? = null
+    private var grammarSnapshot: GrammarSnapshot? = null
     private var grammarJob: Job? = null
     private var suggestionJob: Job? = null
     private var lastShiftTap = 0L
@@ -88,7 +97,9 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     private var noPersonalizedLearning = false
     private var numericEditor = false
     private var phoneEditor = false
-    private var noSuggestions = false
+    private var editorNoSuggestions = false
+    private var editorAutoComplete = false
+    private var editorAutoCorrect = false
     private val romanBuffer = StringBuilder()
     private var clipboardRegistered = false
     private var suggestionRequestId = 0
@@ -166,6 +177,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
                 contentDescription = emoji
                 textSize = 26f
                 minimumHeight = dp(48)
+            minimumWidth = dp(48)
                 minimumWidth = dp(48)
                 setPadding(pad, pad / 2, pad, pad / 2)
                 setOnClickListener { safeCommitText(emoji) }
@@ -184,11 +196,32 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         noPersonalizedLearning = attribute?.let { (it.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0 } == true
         numericEditor = attribute?.let(::isNumericInput) == true
         phoneEditor = attribute?.let(::isPhoneInput) == true
-        noSuggestions = attribute?.let(::hasNoSuggestions) == true
+        editorNoSuggestions = if (attribute != null) hasNoSuggestions(attribute) else false
+        editorAutoComplete = if (attribute != null) hasAutoComplete(attribute) else false
+        editorAutoCorrect = if (attribute != null) editorAllowsAutoCorrect(attribute) else false
         typedWordCounts.clear()
 
         if (!restarting || sessionToken == null) {
             sessionToken = java.util.UUID.randomUUID().toString()
+        }
+    }
+
+    override fun onUpdateSelection(
+        oldSelStart: Int,
+        oldSelEnd: Int,
+        newSelStart: Int,
+        newSelEnd: Int,
+        candidatesStart: Int,
+        candidatesEnd: Int
+    ) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+
+        if (oldSelStart != newSelStart || oldSelEnd != newSelEnd) {
+            cancelSuggestions()
+            grammarJob?.cancel()
+            grammarJob = null
+            grammarSnapshot = null
+            clearCandidates()
         }
     }
 
@@ -228,7 +261,8 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         updateKeyLabels()
         clearCandidates()
         registerClipboardListenerIfAllowed()
-        ClipboardInsertBus.registerListener(sessionToken!!) { deliverPendingInsert() }
+        val token = sessionToken ?: return
+        ClipboardInsertBus.registerListener(token) { deliverPendingInsert() }
         deliverPendingInsert()
     }
 
@@ -238,36 +272,43 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        flushTransliteration()
         unregisterClipboardListener()
         super.onFinishInputView(finishingInput)
     }
 
     override fun onFinishInput() {
-        super.onFinishInput()
+        flushTransliteration()
+
         sessionToken?.let {
             ClipboardInsertBus.unregisterListener(it)
             ClipboardInsertBus.clear(it)
         }
         sessionToken = null
         typedWordCounts.clear()
-        suggestionJob?.cancel()
+        cancelSuggestions()
         grammarJob?.cancel()
+        grammarJob = null
         grammarSnapshot = null
-        flushTransliteration()
+
+        super.onFinishInput()
     }
 
     override fun onUnbindInput() {
-        super.onUnbindInput()
+        flushTransliteration()
+
         sessionToken?.let {
             ClipboardInsertBus.unregisterListener(it)
             ClipboardInsertBus.clear(it)
         }
         sessionToken = null
         typedWordCounts.clear()
-        suggestionJob?.cancel()
+        cancelSuggestions()
         grammarJob?.cancel()
+        grammarJob = null
         grammarSnapshot = null
-        flushTransliteration()
+
+        super.onUnbindInput()
     }
 
     override fun onDestroy() {
@@ -372,10 +413,10 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     private fun handleChar(code: Int) {
         if (code == 32) {
             flushTransliteration()
-            if (!sensitiveEditor && !noSuggestions && prefs.autoCorrect && currentLang() == "en") {
+            if (!sensitiveEditor && !editorNoSuggestions && prefs.autoCorrect && currentLang() == "en") {
                 tryAutoCorrect()
             }
-            if (!sensitiveEditor && !noSuggestions) maybeLearnCurrentWord()
+            if (!sensitiveEditor && !editorNoSuggestions) maybeLearnCurrentWord()
             safeCommitText(" ")
             afterWordMaybe()
             return
@@ -403,7 +444,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
                 updateKeyLabels()
                 keyboardView.invalidateAllKeys()
             }
-            if (!sensitiveEditor && !noSuggestions) afterWordMaybe()
+            if (!sensitiveEditor) afterWordMaybe()
             return
         }
 
@@ -414,13 +455,13 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         } else {
             flushTransliteration()
             safeCommitText(rawChar)
-            if (!sensitiveEditor && !noSuggestions) afterWordMaybe()
+            if (!sensitiveEditor) afterWordMaybe()
         }
     }
 
     /** True when the next letter should be capitalized (sentence start / after . ! ? / newline). */
     private fun shouldAutoCap(): Boolean {
-        if (!prefs.autoCapitalize || sensitiveEditor || noSuggestions) return false
+        if (!prefs.autoCapitalize || sensitiveEditor || editorNoSuggestions) return false
         if (symbolActive || currentLang() != "en") return false
         val before = safeGetTextBeforeCursor(2) ?: return false
         if (before.endsWith("\n")) return true
@@ -442,11 +483,18 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
 
         val text = PhoneticTransliterator.transliterate(romanBuffer.toString(), currentLang())
         safeSetComposingText("", 1)
-        safeCommitText(text)
-        romanBuffer.clear()
+        if (safeCommitText(text)) {
+            romanBuffer.clear()
+        }
     }
 
     private fun handleDelete() {
+        val selected = safeGetSelectedText()
+        if (!selected.isNullOrEmpty()) {
+            safeCommitText("")
+            return
+        }
+
         if (romanBuffer.isNotEmpty() && !sensitiveEditor && currentLang() != "en") {
             deleteLastCodePoint()
             if (romanBuffer.isEmpty()) {
@@ -459,8 +507,9 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         }
         val before = safeGetTextBeforeCursor(2)
         val deleteCount = if (before != null && before.length == 2 && Character.isSurrogatePair(before[0], before[1])) 2 else 1
-        safeDeleteSurroundingText(deleteCount, 0)
-        if (!sensitiveEditor && !noSuggestions) afterWordMaybe()
+        if (safeDeleteSurroundingText(deleteCount, 0)) {
+            if (!sensitiveEditor) afterWordMaybe()
+        }
     }
 
     private fun deleteLastCodePoint() {
@@ -510,11 +559,10 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
 
     private fun deliverPendingInsert() {
         if (currentInputConnection == null) return
+        if (sensitiveEditor) return
         val token = sessionToken ?: return
-        val pending = ClipboardInsertBus.take(token) ?: return
-        try {
-            currentInputConnection?.commitText(pending, 1)
-        } catch (e: Exception) {
+        ClipboardInsertBus.consume(token) { pendingText ->
+            safeCommitText(pendingText)
         }
         clearCandidates()
     }
@@ -540,7 +588,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     }
 
     private fun afterWordMaybe() {
-        if (sensitiveEditor || numericEditor || phoneEditor || noSuggestions) {
+        if (sensitiveEditor || numericEditor || phoneEditor || editorNoSuggestions) {
             clearCandidates()
             return
         }
@@ -614,46 +662,67 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         clearCandidates()
     }
 
+    private fun cancelSuggestions() {
+        suggestionJob?.cancel()
+        suggestionJob = null
+        ++suggestionRequestId
+    }
+
     private fun clearCandidates() {
         ++suggestionRequestId
         if (::candidateBar.isInitialized) candidateBar.removeAllViews()
     }
 
     private fun runGrammarCheck() {
-        if (sensitiveEditor || numericEditor || phoneEditor || noSuggestions) return
+        if (sensitiveEditor || numericEditor || phoneEditor) return
         flushTransliteration()
-        val before = safeGetTextBeforeCursor(2000) ?: ""
-        val after = safeGetTextAfterCursor(2000) ?: ""
-        val text = before + after
+
+        val maxChars = 2000
+        val before = safeGetTextBeforeCursor(maxChars) ?: ""
+        val selected = safeGetSelectedText() ?: ""
+
+        val remaining = maxChars - before.length - selected.length
+        val after = if (remaining > 0) {
+            safeGetTextAfterCursor(remaining) ?: ""
+        } else {
+            ""
+        }
+
+        val text = before + selected + after
         if (text.isBlank()) return
 
+        val cursorStart = before.length
+        val cursorEnd = cursorStart + selected.length
+
         grammarJob?.cancel()
-        grammarSnapshot = text
+
+        val lang = currentLang()
+        grammarSnapshot = GrammarSnapshot(text, cursorStart, cursorEnd, lang, 0, text.length)
+
         grammarJob = scope.launch {
-            val issues = withContext(Dispatchers.IO) {
-                if (prefs.useOnlineGrammar && isNetworkAvailable()) {
+            val issues = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                if (prefs.useOnlineGrammar && isNetworkAvailable() && lang == "en") {
                     try {
-                        onlineGrammar.check(text, currentLang())
+                        onlineGrammar.check(text, lang)
                     } catch (e: Exception) {
-                        android.util.Log.d("NxtGenIME", "Online grammar failed, falling back to offline", e)
                         offlineGrammar.check(text)
                     }
                 } else {
                     offlineGrammar.check(text)
                 }
             }
-            if (isActive) showGrammarIssues(issues, before, after)
+            if (grammarJob?.isActive == true) showGrammarIssues(issues)
         }
     }
 
-    private fun showGrammarIssues(issues: List<GrammarIssue>, before: String, after: String) {
+    private fun showGrammarIssues(issues: List<GrammarIssue>) {
         clearCandidates()
         if (issues.isEmpty()) {
             addCandidate(getString(R.string.no_grammar_issues), false) {}
             return
         }
-        val snapshot = before + after
-        val cursor = before.length
+        val snapshot = grammarSnapshot ?: return
+        val cursor = snapshot.cursorStart
         issues.take(8).forEach { issue ->
             val start = issue.start
             val end = start + issue.length
@@ -664,28 +733,41 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
                 issue.message
             }
             if (fixable) {
-                addCandidate(label, true) { applyGrammarFix(issue, before, after) }
+                addCandidate(label, true) { applyGrammarFix(issue) }
             } else {
                 addCandidate(label, false) {}
             }
         }
     }
 
-    private fun applyGrammarFix(issue: GrammarIssue, before: String, after: String) {
+    private fun applyGrammarFix(issue: GrammarIssue) {
+        val snapshot = grammarSnapshot ?: return
+
         val currentBefore = safeGetTextBeforeCursor(2000) ?: ""
-        val currentAfter = safeGetTextAfterCursor(2000) ?: ""
-        val currentSnapshot = currentBefore + currentAfter
-        if (grammarSnapshot != currentSnapshot) {
-            Toast.makeText(this, R.string.text_changed_recheck, Toast.LENGTH_SHORT).show()
+        val currentSelected = safeGetSelectedText() ?: ""
+        val remaining = 2000 - currentBefore.length - currentSelected.length
+        val currentAfter = if (remaining > 0) safeGetTextAfterCursor(remaining) ?: "" else ""
+
+        val currentText = currentBefore + currentSelected + currentAfter
+        val currentCursorStart = currentBefore.length
+        val currentCursorEnd = currentCursorStart + currentSelected.length
+
+        if (currentText != snapshot.text ||
+            currentCursorStart != snapshot.cursorStart ||
+            currentCursorEnd != snapshot.cursorEnd ||
+            currentLang() != snapshot.language) {
+
+            android.widget.Toast.makeText(this, R.string.text_changed_recheck, android.widget.Toast.LENGTH_SHORT).show()
             clearCandidates()
             return
         }
+
         val start = issue.start
         val end = start + issue.length
-        val cursor = currentBefore.length
+        val cursor = currentCursorStart
         val replacement = issue.replacements.firstOrNull() ?: return
-        val snapshot = grammarSnapshot ?: return
-        if (start < 0 || end < start || end > cursor || end > snapshot.length) return
+
+        if (start < 0 || end < start || end > cursor || end > snapshot.text.length) return
 
         val middle = currentBefore.substring(end, cursor)
         val connection = currentInputConnection ?: return
@@ -708,6 +790,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
             this.text = text
             contentDescription = text
             minimumHeight = dp(48)
+            minimumWidth = dp(48)
             setTextColor(if (clickable) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt())
             setPadding(padH, padV, padH, padV)
             textSize = 15f
@@ -727,6 +810,12 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         } catch (_: SecurityException) {
             return
         } ?: return
+
+        val extras = clip.description?.extras
+        if (extras?.getBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, false) == true) {
+            return
+        }
+
         if (clip.itemCount <= 0) return
         val text = try {
             clip.getItemAt(0).coerceToText(this).toString().trim()
@@ -734,7 +823,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
             return
         }
         if (text.isEmpty()) return
-        scope.launch(Dispatchers.IO) {
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             clipboardMutex.withLock {
                 clipboardRepo.addIfNew(text)
             }
@@ -778,9 +867,11 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         val lower = word.lowercase(Locale.ROOT)
         if (suggestionEngine.contains(lang, lower)) return false
         val suggestion = suggestionEngine.suggest(lang, lower, 1, 1).firstOrNull() ?: return false
-        safeDeleteSurroundingText(word.length, 0)
-        safeCommitText(preserveCapitalization(word, suggestion))
-        return true
+        if (safeDeleteSurroundingText(word.length, 0)) {
+            safeCommitText(preserveCapitalization(word, suggestion))
+            return true
+        }
+        return false
     }
 
     /** Learns a word only after it has been typed LEARN_THRESHOLD times in this session. */
@@ -825,37 +916,56 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     private fun isPhoneInput(info: EditorInfo): Boolean =
         (info.inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_PHONE
 
+
     private fun hasNoSuggestions(info: EditorInfo): Boolean =
         (info.inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0
 
-    private fun safeCommitText(text: String) {
-        try {
-            currentInputConnection?.commitText(text, 1)
+    private fun hasAutoComplete(info: EditorInfo): Boolean =
+        (info.inputType and InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE) != 0
+
+    private fun editorAllowsAutoCorrect(info: EditorInfo): Boolean =
+        (info.inputType and InputType.TYPE_TEXT_FLAG_AUTO_CORRECT) != 0
+
+    private fun safeCommitText(text: String): Boolean {
+        return try {
+            currentInputConnection?.commitText(text, 1) == true
         } catch (_: Exception) {
+            false
         }
     }
 
-    private fun safeDeleteSurroundingText(before: Int, after: Int) {
-        if (before < 0 || after < 0) return
-        try {
-            currentInputConnection?.deleteSurroundingText(before, after)
+    private fun safeDeleteSurroundingText(before: Int, after: Int): Boolean {
+        if (before < 0 || after < 0) return false
+        return try {
+            currentInputConnection?.deleteSurroundingText(before, after) == true
         } catch (_: Exception) {
+            false
         }
     }
 
-    private fun safeSetComposingText(text: String, pos: Int) {
-        try {
-            currentInputConnection?.setComposingText(text, pos)
+    private fun safeSetComposingText(text: String, pos: Int): Boolean {
+        return try {
+            currentInputConnection?.setComposingText(text, pos) == true
         } catch (_: Exception) {
+            false
         }
     }
 
-    private fun safeFinishComposingText() {
-        try {
-            currentInputConnection?.finishComposingText()
+    private fun safeFinishComposingText(): Boolean {
+        return try {
+            currentInputConnection?.finishComposingText() == true
         } catch (_: Exception) {
+            false
         }
     }
+
+
+    private fun safeGetSelectedText(): String? =
+        try {
+            currentInputConnection?.getSelectedText(0)?.toString()
+        } catch (_: Exception) {
+            null
+        }
 
     private fun safeGetTextBeforeCursor(max: Int): String? =
         try {
