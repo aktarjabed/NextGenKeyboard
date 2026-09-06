@@ -16,16 +16,17 @@ class SuggestionEngine(private val context: Context) {
 
     @Synchronized
     fun load(lang: String) {
-        if (!loaded.add(lang)) return
+        if (loaded.contains(lang)) return
         val words = ConcurrentHashMap.newKeySet<String>()
         try {
             context.assets.open("dict/$lang.txt").use { stream ->
                 BufferedReader(stream.reader(Charsets.UTF_8)).useLines { lines ->
-                    lines.map { it.trim().lowercase() }
+                    lines.map { it.trim().lowercase(java.util.Locale.ROOT) }
                         .filter { it.isNotEmpty() }
                         .forEach(words::add)
                 }
             }
+            loaded.add(lang)
         } catch (e: Exception) {
             // Empty dictionary is a valid degraded state.
             android.util.Log.e("NxtGenIME", "Failed to load dictionary asset for lang: $lang", e)
@@ -36,10 +37,10 @@ class SuggestionEngine(private val context: Context) {
     fun isLoaded(lang: String): Boolean = loaded.contains(lang)
 
     fun contains(lang: String, word: String): Boolean =
-        dictionaries[lang]?.contains(word.lowercase()) == true
+        dictionaries[lang]?.contains(word.lowercase(java.util.Locale.ROOT)) == true
 
     fun addUserWord(lang: String, word: String) {
-        val value = word.trim().lowercase()
+        val value = word.trim().lowercase(java.util.Locale.ROOT)
         if (value.isNotEmpty()) {
             dictionaries.getOrPut(lang) { ConcurrentHashMap.newKeySet() }.add(value)
         }
@@ -47,14 +48,14 @@ class SuggestionEngine(private val context: Context) {
 
     fun addUserWords(lang: String, words: List<String>) {
         val set = dictionaries.getOrPut(lang) { ConcurrentHashMap.newKeySet() }
-        words.map { it.trim().lowercase() }
+        words.map { it.trim().lowercase(java.util.Locale.ROOT) }
             .filter { it.isNotEmpty() }
             .forEach(set::add)
     }
 
     fun suggest(lang: String, word: String, max: Int, maxDistance: Int = 2): List<String> {
         val dict = dictionaries[lang] ?: return emptyList()
-        val target = word.lowercase()
+        val target = word.lowercase(java.util.Locale.ROOT)
         if (dict.isEmpty() || target.isEmpty() || max <= 0 || maxDistance < 0) return emptyList()
 
         return dict.asSequence()

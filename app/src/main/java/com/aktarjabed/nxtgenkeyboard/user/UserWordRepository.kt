@@ -3,7 +3,7 @@ package com.aktarjabed.nxtgenkeyboard.user
 class UserWordRepository(private val dao: UserWordDao) {
 
     suspend fun add(lang: String, word: String) {
-        val w = word.trim().lowercase()
+        val w = word.trim().lowercase(java.util.Locale.ROOT)
         if (w.length >= 2) {
             try {
                 dao.insert(UserWordEntity(lang = lang, word = w))

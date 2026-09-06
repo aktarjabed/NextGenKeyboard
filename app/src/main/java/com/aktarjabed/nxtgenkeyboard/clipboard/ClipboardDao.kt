@@ -51,7 +51,7 @@ interface ClipboardDao {
           AND id NOT IN (
               SELECT id FROM clipboard
               WHERE pinned = 0
-              ORDER BY createdAt DESC
+              ORDER BY createdAt DESC, id DESC
               LIMIT 200
           )
         """
