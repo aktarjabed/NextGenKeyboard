@@ -79,10 +79,14 @@ class ClipboardHistoryActivity : AppCompatActivity() {
 
         listView.setOnItemClickListener { _, _, position, _ ->
             val item = items.getOrNull(position) ?: return@setOnItemClickListener
-            if (launchedFromIme && sessionToken != null) {
-                // Hand the text to the keyboard service; it commits on return.
-                ClipboardInsertBus.post(sessionToken!!, item.text)
-                finish()
+            if (launchedFromIme) {
+                sessionToken?.let { token ->
+                    // Hand the text to the keyboard service; it commits on return.
+                    ClipboardInsertBus.post(token, item.text)
+                    finish()
+                } ?: run {
+                    copyToSystemClipboard(item.text)
+                }
             } else {
                 copyToSystemClipboard(item.text)
             }

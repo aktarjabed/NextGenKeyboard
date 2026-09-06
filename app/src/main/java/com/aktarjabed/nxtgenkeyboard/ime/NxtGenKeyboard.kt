@@ -82,8 +82,10 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     private var currentEditorInfo: EditorInfo? = null
     private var grammarSnapshot: String? = null
     private var grammarJob: Job? = null
+    private var suggestionJob: Job? = null
     private var lastShiftTap = 0L
     private var sensitiveEditor = false
+    private var noPersonalizedLearning = false
     private var numericEditor = false
     private var phoneEditor = false
     private var noSuggestions = false
@@ -92,7 +94,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     private var suggestionRequestId = 0
 
     // Typo-safe learning: a word is only learned after being typed LEARN_THRESHOLD times.
-    private val typedWordCounts = HashMap<String, Int>()
+    private val typedWordCounts = java.util.HashMap<String, Int>()
 
     private val clipboardManager by lazy {
         getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -175,15 +177,23 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     // Never go to fullscreen extract mode (landscape) — it hides our keyboard view.
     override fun onEvaluateFullscreenMode(): Boolean = false
 
-    override fun onStartInputView(attribute: EditorInfo?, restarting: Boolean) {
-        super.onStartInputView(attribute, restarting)
+    override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        super.onStartInput(attribute, restarting)
         currentEditorInfo = attribute
-        sensitiveEditor = attribute?.let(::isSensitiveInput) == true
+        sensitiveEditor = attribute?.let(::isPasswordInput) == true
+        noPersonalizedLearning = attribute?.let { (it.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0 } == true
         numericEditor = attribute?.let(::isNumericInput) == true
         phoneEditor = attribute?.let(::isPhoneInput) == true
         noSuggestions = attribute?.let(::hasNoSuggestions) == true
-        sessionToken = java.util.UUID.randomUUID().toString()
+        typedWordCounts.clear()
 
+        if (!restarting || sessionToken == null) {
+            sessionToken = java.util.UUID.randomUUID().toString()
+        }
+    }
+
+    override fun onStartInputView(attribute: EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(attribute, restarting)
         if (!::keyboardView.isInitialized) return
 
         // Synchronize language with system-selected subtype, fallback to prefs
@@ -228,12 +238,36 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        unregisterClipboardListener()
+        super.onFinishInputView(finishingInput)
+    }
+
+    override fun onFinishInput() {
+        super.onFinishInput()
+        sessionToken?.let {
+            ClipboardInsertBus.unregisterListener(it)
+            ClipboardInsertBus.clear(it)
+        }
+        sessionToken = null
+        typedWordCounts.clear()
+        suggestionJob?.cancel()
         grammarJob?.cancel()
         grammarSnapshot = null
         flushTransliteration()
-        unregisterClipboardListener()
-        sessionToken?.let { ClipboardInsertBus.unregisterListener(it) }
-        super.onFinishInputView(finishingInput)
+    }
+
+    override fun onUnbindInput() {
+        super.onUnbindInput()
+        sessionToken?.let {
+            ClipboardInsertBus.unregisterListener(it)
+            ClipboardInsertBus.clear(it)
+        }
+        sessionToken = null
+        typedWordCounts.clear()
+        suggestionJob?.cancel()
+        grammarJob?.cancel()
+        grammarSnapshot = null
+        flushTransliteration()
     }
 
     override fun onDestroy() {
@@ -477,16 +511,10 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
     private fun deliverPendingInsert() {
         if (currentInputConnection == null) return
         val token = sessionToken ?: return
-        val pending = ClipboardInsertBus.peek(token) ?: return
-        var success = false
+        val pending = ClipboardInsertBus.take(token) ?: return
         try {
-            success = currentInputConnection?.commitText(pending, 1) ?: false
+            currentInputConnection?.commitText(pending, 1)
         } catch (e: Exception) {
-        }
-        if (success) {
-            ClipboardInsertBus.consume(token)
-        } else {
-            // if we couldn't commit, we leave it pending for later
         }
         clearCandidates()
     }
@@ -541,8 +569,11 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
             return
         }
 
+        suggestionJob?.cancel()
         val requestId = ++suggestionRequestId
-        scope.launch {
+        suggestionJob = scope.launch {
+            kotlinx.coroutines.delay(120L)
+            if (requestId != suggestionRequestId || !isActive) return@launch
             val suggestions = withContext(Dispatchers.Default) {
                 suggestionEngine.suggest(lang, lower, max = 5, maxDistance = 2)
             }
@@ -754,7 +785,7 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
 
     /** Learns a word only after it has been typed LEARN_THRESHOLD times in this session. */
     private fun maybeLearnCurrentWord() {
-        if (!prefs.learnWords) return
+        if (!prefs.learnWords || noPersonalizedLearning || sensitiveEditor) return
         if (!suggestionEngine.isLoaded(currentLang())) return
         val word = lastWordBeforeCursor() ?: return
         if (word.length < 2) return
@@ -777,17 +808,15 @@ class NxtGenKeyboard : InputMethodService(), KeyboardView.OnKeyboardActionListen
         else -> suggestion
     }
 
-    private fun isSensitiveInput(info: EditorInfo): Boolean {
+    private fun isPasswordInput(info: EditorInfo): Boolean {
         val inputType = info.inputType
         val clazz = inputType and InputType.TYPE_MASK_CLASS
         val variation = inputType and InputType.TYPE_MASK_VARIATION
-        val isPassword = (clazz == InputType.TYPE_CLASS_TEXT && variation in setOf(
+        return (clazz == InputType.TYPE_CLASS_TEXT && variation in setOf(
             InputType.TYPE_TEXT_VARIATION_PASSWORD,
             InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
             InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
         )) || (clazz == InputType.TYPE_CLASS_NUMBER && variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD)
-        val noLearning = (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0
-        return isPassword || noLearning
     }
 
     private fun isNumericInput(info: EditorInfo): Boolean =

@@ -3,12 +3,15 @@ package com.aktarjabed.nxtgenkeyboard.util
 import java.util.concurrent.ConcurrentHashMap
 
 /** One-shot channel so ClipboardHistoryActivity can hand a text item back to the IME for direct insertion. */
-object ClipboardInsertBus {
-    @Volatile
-    private var pendingToken: String? = null
-    @Volatile
-    private var pendingText: String? = null
+import java.util.concurrent.atomic.AtomicReference
 
+data class PendingInsert(
+    val token: String,
+    val text: String
+)
+
+object ClipboardInsertBus {
+    private val pending = AtomicReference<PendingInsert?>(null)
     private val listeners = ConcurrentHashMap<String, () -> Unit>()
 
     fun registerListener(token: String, l: () -> Unit) {
@@ -20,25 +23,33 @@ object ClipboardInsertBus {
     }
 
     fun post(token: String, text: String) {
-        pendingToken = token
-        pendingText = text
+        pending.set(PendingInsert(token, text))
         listeners[token]?.invoke()
     }
 
-    fun peek(token: String): String? {
-        if (pendingToken == token) {
-            return pendingText
+    fun take(token: String): String? {
+        while (true) {
+            val current = pending.get() ?: return null
+            if (current.token == token) {
+                if (pending.compareAndSet(current, null)) {
+                    return current.text
+                }
+            } else {
+                return null
+            }
         }
-        return null
     }
 
-    fun consume(token: String): String? {
-        if (pendingToken == token) {
-            val value = pendingText
-            pendingToken = null
-            pendingText = null
-            return value
+    fun clear(token: String) {
+        while (true) {
+            val current = pending.get() ?: return
+            if (current.token == token) {
+                if (pending.compareAndSet(current, null)) {
+                    return
+                }
+            } else {
+                return
+            }
         }
-        return null
     }
 }
