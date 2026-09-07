@@ -11,7 +11,7 @@ NxtGenKeyboard is a privacy-oriented, multilingual Android keyboard (IME) with b
 *   **Clipboard History:** Stores up to 200 recent unpinned clips plus any pinned clips. Easily copy or pin entries. All data is local and excluded from backups for privacy.
 *   **User Dictionary:** Learns new words as you type and adds them to suggestions in future.
 *   **Customizable Input Feedback:** Toggle keypress sound and vibration. Haptic and audio feedback use standard Android effects.
-*   **Privacy-Focused Defaults:** Sensitive fields (passwords, PINs, OTPs) disable learning, suggestions, grammar, transliteration, and clipboard capture. No user text is logged or sent externally (unless online grammar is explicitly enabled in Settings).
+*   **Privacy-Focused Defaults:** Sensitive fields (passwords, PINs) disable learning, suggestions, grammar, transliteration, and clipboard capture. No user text is logged or sent externally (unless online grammar is explicitly enabled in Settings).
 *   **Modern Dark Theme:** Optimized for eye comfort; matches system dark mode (uses AppCompat DayNight).
 *   **Performance:** Room clipboard queries are optimized. NxtGenKeyboard utilizes coroutines and correctly debounces suggestion generation without introducing N+1 queries.
 
@@ -80,7 +80,7 @@ NxtGenKeyboard is designed with user privacy in mind:
 *   **Opt-In Features with Warnings:**
     *   **Clipboard History:** Completely local and disabled by default. Enabling it shows a warning that it may store sensitive data. History data is excluded from backups (`android:dataExtractionRules` excludes database and shared prefs).
     *   **Online Grammar:** Disabled by default with a warning that text is sent to the grammar server.
-*   **Sensitive Fields:** Automatic disabling of suggestions, transliteration, clipboard capture, and grammar in password/PIN/OTP fields (TextView input types flagged as no suggestions or password).
+*   **Sensitive Fields:** Automatic disabling of suggestions, transliteration, clipboard capture, and grammar in password/PIN fields (TextView input types flagged as no suggestions or password).
 *   **Encryption & Permissions:** The keyboard only requests permissions needed for its features (e.g., Internet for optional grammar checks, VIBRATE for haptic feedback). There is no external storage or extra permissions used.
 
 ## Contributing
